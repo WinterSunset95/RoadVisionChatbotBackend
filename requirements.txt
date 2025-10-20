@@ -1,0 +1,25 @@
+# Core Framework
+fastapi
+uvicorn[standard]
+python-dotenv
+python-multipart
+
+# AI & LLM
+google-generativeai
+sentence-transformers
+tiktoken
+
+# Vector DB
+chromadb
+
+# Document Processing
+llama-parse
+PyMuPDF
+pdfplumber
+pytesseract
+Pillow
+pandas
+
+# Flask (Legacy - for reference during migration)
+# flask
+# flask_cors
