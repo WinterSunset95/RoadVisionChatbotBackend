@@ -29,7 +29,8 @@ class Settings:
     POSTGRES_USER: Optional[str] = None
     POSTGRES_PASSWORD: Optional[str] = None
     POSTGRES_DB: Optional[str] = None
-    POSTGRES_HOST: str = "db"
+    # Default for local scripts like Alembic. Override with POSTGRES_HOST=db for Docker.
+    POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     DATABASE_URL: Optional[str] = None
     
@@ -55,6 +56,7 @@ class Settings:
         self.POSTGRES_USER = os.getenv("POSTGRES_USER")
         self.POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
         self.POSTGRES_DB = os.getenv("POSTGRES_DB")
+        self.POSTGRES_HOST = os.getenv("POSTGRES_HOST", self.POSTGRES_HOST)
 
         if not self.GOOGLE_API_KEY:
             raise ValueError("❌ GOOGLE_API_KEY not found in environment!")
