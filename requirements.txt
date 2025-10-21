@@ -20,6 +20,11 @@ pytesseract
 Pillow
 pandas
 
+# Database & ORM
+sqlalchemy
+psycopg2-binary
+alembic
+
 # Flask (Legacy - for reference during migration)
 # flask
 # flask_cors
