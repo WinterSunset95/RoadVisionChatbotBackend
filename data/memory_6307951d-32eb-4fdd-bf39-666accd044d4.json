@@ -1,0 +1,30 @@
+[
+  {
+    "role": "user",
+    "parts": [
+      "Hello there"
+    ],
+    "timestamp": "2025-10-21T03:14:13.785373Z"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "Hello there! How can I help you today?\n"
+    ],
+    "timestamp": "2025-10-21T03:14:13.785448Z"
+  },
+  {
+    "role": "user",
+    "parts": [
+      "Take a look at the documents and tell me what they are about"
+    ],
+    "timestamp": "2025-10-21T03:15:20.778148Z"
+  },
+  {
+    "role": "model",
+    "parts": [
+      "The documents provided are assignments for the BCA (Bachelor of Computer Applications) program. Specifically, they include assignments for the following courses:\n\n*   **BEVAE-181:** Environmental Studies (Source 4, 6, 7, 8, 9, 10, 11)\n*   **BEGLA-136:** English at Work Place (Source 2, 6, 7, 8, 9, 10, 11)\n*   **BCS-111:** Computer Basics and PC Software (Source 5, 6, 7, 8, 9, 10, 11)\n*   **BCSL-013:** Computer Basics and PC Software Lab (Source 3, 6, 7, 8, 9, 10, 11)\n*   **BCS-012:** (Source 6, 7, 8, 9, 10, 11)\n\nThese assignments cover a range of topics, including creating documents with a word processor, designing flyers, using spreadsheet software, using email software, Linux commands, presentations, and general questions related to the course material. (Source 1, 2, 3, 4, 5)\n\nThe assignments are for the 2025-26 session, with submission deadlines of October 31st, 2025, for the July 2025 session and April 30th, 2026, for the January 2026 session. (Source 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)\n\nSubmitting assignments by the due date and meeting minimum attendance requirements are essential to be eligible for Term End Examinations and Practical Examinations. (Source 11)\n"
+    ],
+    "timestamp": "2025-10-21T03:15:20.778199Z"
+  }
+]
