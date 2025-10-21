@@ -1,7 +1,9 @@
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class DocumentMetadata(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     name: str
     chunks: int
     status: str

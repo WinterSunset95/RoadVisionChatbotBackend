@@ -1,27 +1,27 @@
+import uuid
 from typing import Dict, List
+from sqlalchemy.orm import Session
 
-from app.core.services import (
-    llm_model, vector_store, document_store, active_conversations
-)
-from app.db import file_store
-from app.utils import get_consistent_timestamp
+from app.core.services import llm_model, vector_store
+from app.db import crud
 from app.config import settings
 
-def send_message_to_chat(chat_id: str, user_message: str) -> Dict:
+def send_message_to_chat(db: Session, chat_id: uuid.UUID, user_message: str) -> Dict:
     """
     Handles the RAG pipeline for a user message.
     1. Retrieves context from vector store.
     2. Builds a prompt.
     3. Calls the LLM.
-    4. Saves conversation history.
+    4. Saves conversation history to DB.
     5. Returns the response.
     """
-    if chat_id not in active_conversations:
-        active_conversations[chat_id] = file_store.load_conversation(chat_id)
-    conversation = active_conversations[chat_id]
+    # Check if chat exists
+    chat = crud.get_chat(db, chat_id)
+    if not chat:
+        raise ValueError("Chat not found")
 
     # 1. Retrieve context
-    chat_docs = document_store.get_chat_documents(chat_id)
+    chat_docs = chat.documents
     context_text = ""
     sources = []
     
@@ -73,8 +73,8 @@ INSTRUCTIONS:
         prompt = f"""You are a helpful AI assistant. Please answer: {user_message}"""
         
     # 3. Call LLM
-    recent_history = conversation[-10:]
-    gemini_history = [{"role": msg["role"], "parts": [{"text": msg["parts"][0]}]} for msg in recent_history]
+    recent_history = crud.get_chat_messages(db, chat_id)[-10:]
+    gemini_history = [{"role": msg.sender, "parts": [{"text": msg.text}]} for msg in recent_history]
     gemini_history.append({"role": "user", "parts": [{"text": prompt}]})
     
     try:
@@ -83,20 +83,13 @@ INSTRUCTIONS:
     except Exception as api_error:
         print(f"❌ Gemini API error: {api_error}")
         bot_response = f"I encountered an error: {str(api_error)}"
+
+    # 4. Save conversation to DB
+    crud.add_message(db, chat_id=chat_id, sender="user", text=user_message)
+    crud.add_message(db, chat_id=chat_id, sender="bot", text=bot_response)
     
-    # 4. Save conversation
-    conversation.append({"role": "user", "parts": [user_message], "timestamp": get_consistent_timestamp()})
-    conversation.append({"role": "model", "parts": [bot_response], "timestamp": get_consistent_timestamp()})
-    file_store.save_conversation(chat_id, conversation)
-    
-    # Update chat metadata
-    chat_history = file_store.load_chat_history()
-    for chat in chat_history:
-        if chat["id"] == chat_id:
-            chat["message_count"] = len(conversation)
-            chat["updated_at"] = get_consistent_timestamp()
-            break
-    file_store.save_chat_history(chat_history)
+    # The message count will be retrieved on the next request.
+    message_count = len(recent_history) + 2
     
     # 5. Return response
-    return {"reply": bot_response, "sources": sources, "message_count": len(conversation)}
+    return {"reply": bot_response, "sources": sources, "message_count": message_count}

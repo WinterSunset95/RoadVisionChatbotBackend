@@ -45,11 +45,8 @@ def create_app() -> FastAPI:
         # The services are initialized when the module is imported
         from app.core import services
         
-        # Load chat history into memory for legacy compatibility
-        from app.db import file_store
-        history = file_store.load_chat_history()
-        print(f"📁 Loaded {len(history)} chats from history.")
-        
+        # Legacy file-based chat history loading is no longer needed.
+        # Database connection is managed by the session dependency.
         print("--- Startup Complete ---")
 
     # --- ROUTERS ---

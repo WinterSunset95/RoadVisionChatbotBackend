@@ -1,8 +1,11 @@
 from typing import List, Optional
-from pydantic import BaseModel
+from uuid import UUID
+from pydantic import BaseModel, ConfigDict
 
 class ChatMetadata(BaseModel):
-    id: str
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
     title: str
     created_at: str
     updated_at: str
@@ -12,7 +15,9 @@ class ChatMetadata(BaseModel):
     pdf_list: List[dict] = []
 
 class Message(BaseModel):
-    id: str
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: UUID
     text: str
     sender: str # 'user' or 'bot'
     timestamp: str

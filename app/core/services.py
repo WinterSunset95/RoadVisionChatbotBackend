@@ -8,7 +8,7 @@ from llama_parse import LlamaParse
 from app.config import settings
 from app.services.document_service import PDFProcessor, ExcelProcessor
 from app.db.vector_store import VectorStoreManager
-from app.db.document_store import DocumentStore
+# document_store is replaced by DB CRUD operations
 
 print("--- Initializing Core Services ---")
 
@@ -31,12 +31,10 @@ try:
     pdf_processor = PDFProcessor(embedding_model, tokenizer)
     excel_processor = ExcelProcessor(embedding_model, tokenizer) 
     vector_store = VectorStoreManager(chroma_client, embedding_model)
-    document_store = DocumentStore()
     
-    # This mimics the legacy global state for now. Will be replaced in Phase 2/3.
+    # This mimics the legacy global state for now. Will be replaced in Phase 3 with Redis.
     upload_jobs: dict = {}
-    # This is also legacy state. To be replaced.
-    active_conversations: dict = {}
+    # active_conversations and document_store are now handled by the database.
 
     print("--- Core Services Initialized Successfully ---")
 
