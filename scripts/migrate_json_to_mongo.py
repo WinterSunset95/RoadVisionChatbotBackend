@@ -17,7 +17,7 @@ def migrate():
     to the MongoDB database.
     """
     try:
-        client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=5000)
+        client = MongoClient(settings.MONGODB_URL, serverSelectionTimeoutMS=5000, uuidRepresentation="standard")
         client.admin.command('ismaster')
     except Exception as e:
         print(f"❌ Could not connect to MongoDB. Please ensure it is running.")

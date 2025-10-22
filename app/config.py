@@ -23,15 +23,15 @@ class Settings:
 
     # API Keys
     GOOGLE_API_KEY: str = ""
-    LLAMA_CLOUD_API_KEY: Optional[str] = None
+    LLAMA_CLOUD_API_KEY: str = ""
     
     # Database
-    MONGODB_USER: Optional[str] = None
-    MONGODB_PASSWORD: Optional[str] = None
-    MONGODB_DB: Optional[str] = None
+    MONGODB_USER: str = "mongo"
+    MONGODB_PASSWORD: str = "mongo"
+    MONGODB_DB: str = "mongo"
     MONGODB_HOST: str = "localhost"  # Default for local scripts. Override with MONGODB_HOST=db for Docker.
     MONGODB_PORT: int = 27017
-    MONGODB_URL: Optional[str] = None
+    MONGODB_URL: str = "localhost"
     
     # Environment
     ENV: str = "development"
@@ -49,7 +49,7 @@ class Settings:
         else:
             load_dotenv(verbose=True)
 
-        self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+        self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
         self.LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
         
         self.MONGODB_USER = os.getenv("MONGODB_INITDB_ROOT_USERNAME")

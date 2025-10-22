@@ -77,7 +77,7 @@ INSTRUCTIONS:
         
     # 3. Call LLM
     recent_history = chat.messages[-10:]
-    gemini_history = [{"role": msg.sender, "parts": [{"text": msg.text}]} for msg in recent_history]
+    gemini_history = [{"role": "model" if msg.sender == "bot" else "user", "parts": [{"text": msg.text}]} for msg in recent_history]
     gemini_history.append({"role": "user", "parts": [{"text": prompt}]})
     
     try:

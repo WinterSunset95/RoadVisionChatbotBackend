@@ -6,7 +6,7 @@ class MongoClientConnection:
     def __init__(self, mongo_url: str):
         try:
             # Set a timeout to quickly fail if the DB is not available
-            self.client = MongoClient(mongo_url, serverSelectionTimeoutMS=5000)
+            self.client = MongoClient(mongo_url, serverSelectionTimeoutMS=5000, uuidRepresentation="standard")
             # The ismaster command is cheap and does not require auth.
             self.client.admin.command('ismaster')
             print("✅ MongoDB connection successful.")
