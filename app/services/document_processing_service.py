@@ -18,7 +18,7 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
 
     client_conn = None
     try:
-        client_conn = MongoClientConnection(settings.MONGODB_URL)
+        client_conn = MongoClientConnection(settings.MONGO_URL)
         db = client_conn.get_database()
         chat_id = UUID(chat_id_str)
 

@@ -71,7 +71,8 @@ INSTRUCTIONS:
 1. Answer using ONLY the information in the context above
 2. Be specific and cite which sources support your answer
 3. If the context doesn't contain the answer, clearly state: "I don't have that information in the provided documents"
-4. Be concise but thorough"""
+4. Be concise but thorough
+5. Use github markdown formatting for everything"""
     else:
         prompt = f"""You are a helpful AI assistant. Please answer: {user_message}"""
         
