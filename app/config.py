@@ -26,12 +26,12 @@ class Settings:
     LLAMA_CLOUD_API_KEY: str = ""
     
     # Database
-    MONGODB_USER: str = "mongo"
-    MONGODB_PASSWORD: str = "mongo"
-    MONGODB_DB: str = "mongo"
-    MONGODB_HOST: str = "localhost"  # Default for local scripts. Override with MONGODB_HOST=db for Docker.
-    MONGODB_PORT: int = 27017
-    MONGODB_URL: str = "localhost"
+    MONGO_USER: str = "mongo"
+    MONGO_PASSWORD: str = "mongo"
+    MONGO_DB: str = "mongo"
+    MONGO_HOST: str = "localhost"  # Default for local scripts. Override with MONGO_HOST=db for Docker.
+    MONGO_PORT: int = 27017
+    MONGO_URL: str = "localhost"
     
     # Environment
     ENV: str = "development"
@@ -59,38 +59,38 @@ class Settings:
             raise Exception("❌ LLAMA_CLOUD_API_KEY not found in environment!")
         self.LLAMA_CLOUD_API_KEY = llama_api_key
         
-        mongodb_root_user = os.getenv("MONGODB_INITDB_ROOT_USERNAME")
-        if not mongodb_root_user:
-            raise Exception("❌ MONGODB_INITDB_ROOT_USERNAME not found in environment!")
-        self.MONGODB_USER = mongodb_root_user
+        mongo_root_user = os.getenv("MONGO_INITDB_ROOT_USERNAME")
+        if not mongo_root_user:
+            raise Exception("❌ MONGO_INITDB_ROOT_USERNAME not found in environment!")
+        self.MONGO_USER = mongo_root_user
 
-        mongodb_root_password = os.getenv("MONGODB_INITDB_ROOT_PASSWORD")
-        if not mongodb_root_password:
-            raise Exception("❌ MONGODB_INITDB_ROOT_PASSWORD not found in environment!")
-        self.MONGODB_PASSWORD = mongodb_root_password
+        mongo_root_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
+        if not mongo_root_password:
+            raise Exception("❌ MONGO_INITDB_ROOT_PASSWORD not found in environment!")
+        self.MONGO_PASSWORD = mongo_root_password
 
-        mongodb_database = os.getenv("MONGODB_INITDB_DATABASE")
-        if not mongodb_database:
-            raise Exception("❌ MONGODB_INITDB_DATABASE not found in environment!")
-        self.MONGODB_DB = mongodb_database
+        mongo_database = os.getenv("MONGO_INITDB_DATABASE")
+        if not mongo_database:
+            raise Exception("❌ MONGO_INITDB_DATABASE not found in environment!")
+        self.MONGO_DB = mongo_database
 
-        self.MONGODB_PORT = int(os.getenv("MONGODB_PORT", 27017))
-        self.MONGODB_HOST = os.getenv("MONGODB_HOST", self.MONGODB_HOST)
+        self.MONGO_PORT = int(os.getenv("MONGO_PORT", 27017))
+        self.MONGO_HOST = os.getenv("MONGO_HOST", self.MONGO_HOST)
 
         if not self.GOOGLE_API_KEY:
             raise ValueError("❌ GOOGLE_API_KEY not found in environment!")
         
-        if not all([self.MONGODB_USER, self.MONGODB_PASSWORD, self.MONGODB_DB]):
+        if not all([self.MONGO_USER, self.MONGO_PASSWORD, self.MONGO_DB]):
             raise ValueError("❌ Missing MongoDB connection details in environment!")
 
-        self.MONGODB_URL = (
-            f"mongodb://{self.MONGODB_USER}:{self.MONGODB_PASSWORD}"
-            f"@{self.MONGODB_HOST}:{self.MONGODB_PORT}/?authSource=admin"
+        self.MONGO_URL = (
+            f"mongodb://{self.MONGO_USER}:{self.MONGO_PASSWORD}"
+            f"@{self.MONGO_HOST}:{self.MONGO_PORT}/?authSource=admin"
         )
         
         print(f"✅ GOOGLE_API_KEY: configured")
         print(f"✅ LLAMA_CLOUD_API_KEY: {'configured' if self.LLAMA_CLOUD_API_KEY else 'not configured (optional)'}")
-        print(f"✅ MongoDB: configured at {self.MONGODB_HOST}:{self.MONGODB_PORT}")
+        print(f"✅ MongoDB: configured at {self.MONGO_HOST}:{self.MONGO_PORT}")
 
 # Singleton instance
 settings = Settings()
