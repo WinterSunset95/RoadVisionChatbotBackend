@@ -1,12 +1,13 @@
-import uuid
+from uuid import UUID
 from typing import Dict, List
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from app.core.services import llm_model, vector_store
-from app.db import crud
+from app.models.chat import Chat, EmbeddedMessage
 from app.config import settings
+from app.utils import get_consistent_timestamp
 
-def send_message_to_chat(db: Session, chat_id: uuid.UUID, user_message: str) -> Dict:
+def send_message_to_chat(db: Database, chat_id: UUID, user_message: str) -> Dict:
     """
     Handles the RAG pipeline for a user message.
     1. Retrieves context from vector store.
@@ -16,9 +17,11 @@ def send_message_to_chat(db: Session, chat_id: uuid.UUID, user_message: str) -> 
     5. Returns the response.
     """
     # Check if chat exists
-    chat = crud.get_chat(db, chat_id)
-    if not chat:
+    chat_doc = db["chats"].find_one({"_id": chat_id})
+    if not chat_doc:
         raise ValueError("Chat not found")
+    
+    chat = Chat.model_validate(chat_doc)
 
     # 1. Retrieve context
     chat_docs = chat.documents
@@ -26,7 +29,7 @@ def send_message_to_chat(db: Session, chat_id: uuid.UUID, user_message: str) -> 
     sources = []
     
     if chat_docs:
-        collection = vector_store.get_or_create_collection(chat_id)
+        collection = vector_store.get_or_create_collection(str(chat_id))
         results = vector_store.query(collection, user_message, n_results=settings.RAG_TOP_K)
         
         if results:
@@ -73,7 +76,7 @@ INSTRUCTIONS:
         prompt = f"""You are a helpful AI assistant. Please answer: {user_message}"""
         
     # 3. Call LLM
-    recent_history = crud.get_chat_messages(db, chat_id)[-10:]
+    recent_history = chat.messages[-10:]
     gemini_history = [{"role": msg.sender, "parts": [{"text": msg.text}]} for msg in recent_history]
     gemini_history.append({"role": "user", "parts": [{"text": prompt}]})
     
@@ -85,11 +88,22 @@ INSTRUCTIONS:
         bot_response = f"I encountered an error: {str(api_error)}"
 
     # 4. Save conversation to DB
-    crud.add_message(db, chat_id=chat_id, sender="user", text=user_message)
-    crud.add_message(db, chat_id=chat_id, sender="bot", text=bot_response)
+    now = get_consistent_timestamp()
+    user_msg_doc = EmbeddedMessage(sender="user", text=user_message, timestamp=now)
+    bot_msg_doc = EmbeddedMessage(sender="bot", text=bot_response, timestamp=now)
     
-    # The message count will be retrieved on the next request.
-    message_count = len(recent_history) + 2
+    db["chats"].update_one(
+        {"_id": chat_id},
+        {
+            "$push": {"messages": {"$each": [
+                user_msg_doc.model_dump(), 
+                bot_msg_doc.model_dump()
+            ]}},
+            "$set": {"updated_at": now}
+        }
+    )
+    
+    message_count = len(chat.messages) + 2
     
     # 5. Return response
     return {"reply": bot_response, "sources": sources, "message_count": message_count}

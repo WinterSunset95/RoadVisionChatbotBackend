@@ -1,34 +1,29 @@
 import os
-import uuid
+from uuid import UUID, uuid4
 import traceback
-import tempfile
-import stat
-
-import os
-import uuid
-import traceback
-import tempfile
-import stat
 
 from app.core.services import pdf_processor, vector_store, upload_jobs
-from app.db.session import SessionLocal
-from app.db import crud
+from app.db.mongo_client import MongoClientConnection
+from app.models.document import EmbeddedDocument
 from app.utils import get_consistent_timestamp, get_file_hash
 from app.config import settings
 
 def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id: str):
     """
     Background task to process a PDF file.
-    This function gets its own database session.
+    This function gets its own database connection.
     """
     status = upload_jobs.get(job_id, {})
     status.update({"status": "processing", "started_at": get_consistent_timestamp()})
 
-    db = SessionLocal()
+    client_conn = None
     try:
-        chat_id = uuid.UUID(chat_id_str)
+        client_conn = MongoClientConnection(settings.MONGODB_URL)
+        db = client_conn.get_database()
+        chat_id = UUID(chat_id_str)
+
         # 1. Process PDF to get chunks and stats
-        doc_id_str = str(uuid.uuid4())
+        doc_id_str = str(uuid4())
         chunks, stats = pdf_processor.process_pdf(temp_path, doc_id_str, filename)
         
         if not chunks:
@@ -39,23 +34,28 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
         added_count = vector_store.add_chunks(collection, chunks)
         
         # 3. Save document metadata to DB
-        file_size = os.path.getsize(temp_path)
-        file_hash = get_file_hash(temp_path)
+        now = get_consistent_timestamp()
+        new_document = EmbeddedDocument(
+            filename=filename,
+            file_hash=get_file_hash(temp_path),
+            file_size=os.path.getsize(temp_path),
+            chunks_count=added_count,
+            uploaded_at=now,
+            processing_stats=stats
+        )
         
-        doc_data = {
-            "filename": filename,
-            "doc_type": "pdf",
-            "file_hash": file_hash,
-            "file_size": file_size,
-            "chunks_count": added_count,
-            "processing_stats": stats
-        }
-        crud.create_document(db, chat_id=chat_id, doc_data=doc_data)
+        db["chats"].update_one(
+            {"_id": chat_id},
+            {
+                "$push": {"documents": new_document.model_dump()},
+                "$set": {"updated_at": now}
+            }
+        )
         
         # 4. Update job status to 'done'
         status.update({
             "status": "done",
-            "finished_at": get_consistent_timestamp(),
+            "finished_at": now,
             "chunks_added": added_count
         })
         print(f"✅ PDF {filename} processed successfully for job {job_id}")
@@ -70,6 +70,8 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
         })
     
     finally:
+        if client_conn and client_conn.client:
+            client_conn.client.close()
         # 6. Clean up temporary file
         try:
             if os.path.exists(temp_path):
