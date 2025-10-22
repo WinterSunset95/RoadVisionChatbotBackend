@@ -20,10 +20,8 @@ pytesseract
 Pillow
 pandas
 
-# Database & ORM
-sqlalchemy
-psycopg2-binary
-alembic
+# Database Driver
+pymongo[srv]
 
 # Flask (Legacy - for reference during migration)
 # flask

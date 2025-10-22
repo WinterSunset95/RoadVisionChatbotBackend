@@ -1,30 +1,30 @@
-import uuid
+from uuid import UUID
 from typing import List
-from fastapi import APIRouter, HTTPException, Path, Body, status, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Body, status, Depends
+from pymongo.database import Database
 from app.models.chat import ChatMetadata, Message, NewMessageRequest, NewMessageResponse, RenameChatRequest
 from app.services import chat_service, rag_service
-from app.db.session import get_db
+from app.db.mongo_client import get_database
 
 router = APIRouter()
 
 @router.get("/chats", response_model=List[ChatMetadata], tags=["Chats"])
-def get_chats(db: Session = Depends(get_db)):
+def get_chats(db: Database = Depends(get_database)):
     """Get all chats, sorted by last updated"""
     return chat_service.get_all_chats(db)
 
 @router.post("/chats", response_model=ChatMetadata, status_code=status.HTTP_201_CREATED, tags=["Chats"])
-def create_chat(db: Session = Depends(get_db)):
+def create_chat(db: Database = Depends(get_database)):
     """Create a new chat session"""
     return chat_service.create_new_chat(db)
 
 @router.get("/chats/{chat_id}", response_model=List[Message], tags=["Chats"])
-def get_chat(chat_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_chat(chat_id: UUID, db: Database = Depends(get_database)):
     """Get all messages for a specific chat"""
     return chat_service.get_chat_messages(db, chat_id)
 
 @router.delete("/chats/{chat_id}", status_code=status.HTTP_200_OK, tags=["Chats"])
-def delete_chat(chat_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_chat(chat_id: UUID, db: Database = Depends(get_database)):
     """Delete a chat session and its associated data"""
     success = chat_service.delete_chat_by_id(db, chat_id)
     if not success:
@@ -33,9 +33,9 @@ def delete_chat(chat_id: uuid.UUID, db: Session = Depends(get_db)):
 
 @router.put("/chats/{chat_id}/rename", status_code=status.HTTP_200_OK, tags=["Chats"])
 def rename_chat(
-    chat_id: uuid.UUID,
+    chat_id: UUID,
     payload: RenameChatRequest = Body(...),
-    db: Session = Depends(get_db)
+    db: Database = Depends(get_database)
 ):
     """Rename a chat session"""
     if not payload.title or not payload.title.strip():
@@ -48,9 +48,9 @@ def rename_chat(
 
 @router.post("/chats/{chat_id}/messages", response_model=NewMessageResponse, tags=["Chats"])
 def send_message(
-    chat_id: uuid.UUID,
+    chat_id: UUID,
     payload: NewMessageRequest = Body(...),
-    db: Session = Depends(get_db)
+    db: Database = Depends(get_database)
 ):
     """Send a message to a chat and get a RAG-based response"""
     if not payload.message or not payload.message.strip():

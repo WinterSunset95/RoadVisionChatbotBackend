@@ -1,27 +1,16 @@
 version: '3.8'
 services:
   db:
-    image: postgres
-    environment:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-      - POSTGRES_DB
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    image: mongo:latest
+    container_name: mongodb_container
     ports:
-      - "5432:5432"
-  mongodb:
-    image: mongo:latest # Use the latest official MongoDB Docker image
-    container_name: mongodb_container # Assign a name to the container
-    ports:
-      - "27017:27017" # Map host port 27017 to container port 27017
+      - "27017:27017"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME # Set the root username for MongoDB
-      - MONGO_INITDB_ROOT_PASSWORD # Set the root password for MongoDB
-      - MONGO_INITDB_DATABASE # Define a default database
+      - MONGO_INITDB_ROOT_USERNAME
+      - MONGO_INITDB_ROOT_PASSWORD
+      - MONGO_INITDB_DATABASE
     volumes:
-      - mongodb_data:/data/db # Mount a named volume for data persistence
+      - mongodb_data:/data/db
 
 volumes:
-  postgres_data:
-  mongodb_data: # Define the named volume for MongoDB data
+  mongodb_data:

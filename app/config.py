@@ -26,13 +26,12 @@ class Settings:
     LLAMA_CLOUD_API_KEY: Optional[str] = None
     
     # Database
-    POSTGRES_USER: Optional[str] = None
-    POSTGRES_PASSWORD: Optional[str] = None
-    POSTGRES_DB: Optional[str] = None
-    # Default for local scripts like Alembic. Override with POSTGRES_HOST=db for Docker.
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
-    DATABASE_URL: Optional[str] = None
+    MONGODB_USER: Optional[str] = None
+    MONGODB_PASSWORD: Optional[str] = None
+    MONGODB_DB: Optional[str] = None
+    MONGODB_HOST: str = "localhost"  # Default for local scripts. Override with MONGODB_HOST=db for Docker.
+    MONGODB_PORT: int = 27017
+    MONGODB_URL: Optional[str] = None
     
     # Environment
     ENV: str = "development"
@@ -53,25 +52,25 @@ class Settings:
         self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
         self.LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
         
-        self.POSTGRES_USER = os.getenv("POSTGRES_USER")
-        self.POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-        self.POSTGRES_DB = os.getenv("POSTGRES_DB")
-        self.POSTGRES_HOST = os.getenv("POSTGRES_HOST", self.POSTGRES_HOST)
+        self.MONGODB_USER = os.getenv("MONGODB_INITDB_ROOT_USERNAME")
+        self.MONGODB_PASSWORD = os.getenv("MONGODB_INITDB_ROOT_PASSWORD")
+        self.MONGODB_DB = os.getenv("MONGODB_INITDB_DATABASE")
+        self.MONGODB_HOST = os.getenv("MONGODB_HOST", self.MONGODB_HOST)
 
         if not self.GOOGLE_API_KEY:
             raise ValueError("❌ GOOGLE_API_KEY not found in environment!")
         
-        if not all([self.POSTGRES_USER, self.POSTGRES_PASSWORD, self.POSTGRES_DB]):
-            raise ValueError("❌ Missing PostgreSQL connection details in environment!")
+        if not all([self.MONGODB_USER, self.MONGODB_PASSWORD, self.MONGODB_DB]):
+            raise ValueError("❌ Missing MongoDB connection details in environment!")
 
-        self.DATABASE_URL = (
-            f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        self.MONGODB_URL = (
+            f"mongodb://{self.MONGODB_USER}:{self.MONGODB_PASSWORD}"
+            f"@{self.MONGODB_HOST}:{self.MONGODB_PORT}/"
         )
         
         print(f"✅ GOOGLE_API_KEY: configured")
         print(f"✅ LLAMA_CLOUD_API_KEY: {'configured' if self.LLAMA_CLOUD_API_KEY else 'not configured (optional)'}")
-        print(f"✅ PostgreSQL DB: configured at {self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}")
+        print(f"✅ MongoDB: configured at {self.MONGODB_HOST}:{self.MONGODB_PORT}")
 
 # Singleton instance
 settings = Settings()
