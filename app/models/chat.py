@@ -1,11 +1,44 @@
 from typing import List, Optional
-from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from uuid import UUID, uuid4
+from pydantic import BaseModel, ConfigDict, Field
+from .document import EmbeddedDocument
+
+# --- Models for data stored in MongoDB ---
+
+class EmbeddedMessage(BaseModel):
+    """Represents a message embedded in a Chat document."""
+    id: UUID = Field(default_factory=uuid4)
+    sender: str  # 'user' or 'bot'
+    text: str
+    timestamp: str
+
+class Chat(BaseModel):
+    """The main Chat document model for MongoDB."""
+    id: UUID = Field(default_factory=uuid4, alias="_id")
+    title: str
+    created_at: str
+    updated_at: str
+    documents: List[EmbeddedDocument] = []
+    messages: List[EmbeddedMessage] = []
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        json_encoders={UUID: str},
+    )
+
+# --- Models for API Request/Response (for backward compatibility) ---
+
+class Message(BaseModel):
+    """Model for API responses for a single chat's messages."""
+    id: str
+    text: str
+    sender: str
+    timestamp: str
 
 class ChatMetadata(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    
-    id: UUID
+    """Model for the list of chats API response."""
+    id: str
     title: str
     created_at: str
     updated_at: str
@@ -13,14 +46,6 @@ class ChatMetadata(BaseModel):
     has_pdf: bool
     pdf_count: int
     pdf_list: List[dict] = []
-
-class Message(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    
-    id: UUID
-    text: str
-    sender: str # 'user' or 'bot'
-    timestamp: str
 
 class NewMessageRequest(BaseModel):
     message: str
