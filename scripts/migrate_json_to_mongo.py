@@ -3,7 +3,7 @@ import sys
 import json
 from datetime import datetime
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 from pymongo import MongoClient
 
 # Add project root to path to allow importing app modules
@@ -58,7 +58,7 @@ def migrate():
             
             for msg in conversation:
                 messages.append({
-                    "id": UUID(msg.get("id", str(uuid.uuid4()))),
+                    "id": UUID(msg.get("id", str(uuid4()))),
                     "sender": "user" if msg["role"] == "user" else "bot",
                     "text": msg["parts"][0],
                     "timestamp": msg.get("timestamp", get_consistent_timestamp())
@@ -68,7 +68,7 @@ def migrate():
         documents = []
         for doc_meta in chat_meta.get("pdf_list", []):
             documents.append({
-                "id": uuid.uuid4(),
+                "id": uuid4(),
                 "filename": doc_meta.get("name"),
                 "doc_type": "pdf",
                 "file_hash": "unknown_migrated",
