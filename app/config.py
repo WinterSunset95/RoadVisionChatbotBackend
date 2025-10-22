@@ -49,12 +49,32 @@ class Settings:
         else:
             load_dotenv(verbose=True)
 
-        self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-        self.LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        if not google_api_key:
+            raise Exception("❌ GOOGLE_API_KEY not found in environment!")
+        self.GOOGLE_API_KEY = google_api_key
+
+        llama_api_key = os.getenv("LLAMA_CLOUD_API_KEY")
+        if not llama_api_key:
+            raise Exception("❌ LLAMA_CLOUD_API_KEY not found in environment!")
+        self.LLAMA_CLOUD_API_KEY = llama_api_key
         
-        self.MONGODB_USER = os.getenv("MONGODB_INITDB_ROOT_USERNAME")
-        self.MONGODB_PASSWORD = os.getenv("MONGODB_INITDB_ROOT_PASSWORD")
-        self.MONGODB_DB = os.getenv("MONGODB_INITDB_DATABASE")
+        mongodb_root_user = os.getenv("MONGODB_INITDB_ROOT_USERNAME")
+        if not mongodb_root_user:
+            raise Exception("❌ MONGODB_INITDB_ROOT_USERNAME not found in environment!")
+        self.MONGODB_USER = mongodb_root_user
+
+        mongodb_root_password = os.getenv("MONGODB_INITDB_ROOT_PASSWORD")
+        if not mongodb_root_password:
+            raise Exception("❌ MONGODB_INITDB_ROOT_PASSWORD not found in environment!")
+        self.MONGODB_PASSWORD = mongodb_root_password
+
+        mongodb_database = os.getenv("MONGODB_INITDB_DATABASE")
+        if not mongodb_database:
+            raise Exception("❌ MONGODB_INITDB_DATABASE not found in environment!")
+        self.MONGODB_DB = mongodb_database
+
+        self.MONGODB_PORT = int(os.getenv("MONGODB_PORT", 27017))
         self.MONGODB_HOST = os.getenv("MONGODB_HOST", self.MONGODB_HOST)
 
         if not self.GOOGLE_API_KEY:
@@ -65,7 +85,7 @@ class Settings:
 
         self.MONGODB_URL = (
             f"mongodb://{self.MONGODB_USER}:{self.MONGODB_PASSWORD}"
-            f"@{self.MONGODB_HOST}:{self.MONGODB_PORT}/"
+            f"@{self.MONGODB_HOST}:{self.MONGODB_PORT}/?authSource=admin"
         )
         
         print(f"✅ GOOGLE_API_KEY: configured")
