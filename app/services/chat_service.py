@@ -1,9 +1,11 @@
 from uuid import UUID
 from typing import List, Optional
+from fastapi import BackgroundTasks
 from pymongo.database import Database
 
 from app.core.services import vector_store
-from app.models.chat import Chat, ChatMetadata, Message, NewMessageRequest
+from app.models.chat import Chat, ChatMetadata, Message, CreateNewChatRequest
+from app.services.drive_service import download_files_from_drive
 from app.utils import get_consistent_timestamp
 
 def get_all_chats(db: Database) -> List[ChatMetadata]:
@@ -35,7 +37,7 @@ def get_all_chats(db: Database) -> List[ChatMetadata]:
         )
     return response_chats
 
-def create_new_chat(db: Database, payload: Optional[NewMessageRequest]) -> ChatMetadata:
+def create_new_chat(db: Database, payload: CreateNewChatRequest, background_tasks: BackgroundTasks) -> ChatMetadata:
     """Create a new chat session in MongoDB."""
     chat_count = db["chats"].count_documents({})
     now = get_consistent_timestamp()
@@ -46,6 +48,9 @@ def create_new_chat(db: Database, payload: Optional[NewMessageRequest]) -> ChatM
     )
     
     db["chats"].insert_one(new_chat.model_dump(by_alias=True))
+
+    if payload and payload.driveUrl:
+        background_tasks.add_task(download_files_from_drive, payload.driveUrl, str(new_chat.id))
     
     # Convert to API response model
     return ChatMetadata(

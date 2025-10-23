@@ -1,9 +1,9 @@
 from uuid import UUID
 from typing import List, Optional
 from click import Option
-from fastapi import APIRouter, HTTPException, Body, status, Depends
+from fastapi import APIRouter, HTTPException, Body, status, Depends, BackgroundTasks
 from pymongo.database import Database
-from app.models.chat import ChatMetadata, Message, NewMessageRequest, NewMessageResponse, RenameChatRequest
+from app.models.chat import ChatMetadata, Message, NewMessageResponse, RenameChatRequest, CreateNewChatRequest
 from app.services import chat_service, rag_service
 from app.db.mongo_client import get_database
 
@@ -16,11 +16,12 @@ def get_chats(db: Database = Depends(get_database)):
 
 @router.post("/chats", response_model=ChatMetadata, status_code=status.HTTP_201_CREATED, tags=["Chats"])
 def create_chat(
-        payload: Optional[NewMessageRequest] = Body(...),
+        payload: CreateNewChatRequest,
+        background_tasks: BackgroundTasks,
         db: Database = Depends(get_database)
     ):
-    """Create a new chat session"""
-    return chat_service.create_new_chat(db, payload)
+    """Create a new chat session and start importing documents from Google Drive"""
+    return chat_service.create_new_chat(db, payload, background_tasks)
 
 @router.get("/chats/{chat_id}", response_model=List[Message], tags=["Chats"])
 def get_chat(chat_id: UUID, db: Database = Depends(get_database)):
