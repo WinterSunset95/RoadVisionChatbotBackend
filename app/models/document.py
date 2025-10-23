@@ -26,7 +26,6 @@ class EmbeddedDocument(BaseModel):
 
 class DocumentMetadata(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
     name: str
     chunks: int
     status: str
