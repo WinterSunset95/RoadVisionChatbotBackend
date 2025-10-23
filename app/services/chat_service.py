@@ -1,9 +1,9 @@
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 from pymongo.database import Database
 
 from app.core.services import vector_store
-from app.models.chat import Chat, ChatMetadata, Message
+from app.models.chat import Chat, ChatMetadata, Message, NewMessageRequest
 from app.utils import get_consistent_timestamp
 
 def get_all_chats(db: Database) -> List[ChatMetadata]:
@@ -35,7 +35,7 @@ def get_all_chats(db: Database) -> List[ChatMetadata]:
         )
     return response_chats
 
-def create_new_chat(db: Database) -> ChatMetadata:
+def create_new_chat(db: Database, payload: Optional[NewMessageRequest]) -> ChatMetadata:
     """Create a new chat session in MongoDB."""
     chat_count = db["chats"].count_documents({})
     now = get_consistent_timestamp()

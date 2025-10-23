@@ -67,3 +67,6 @@ class NewMessageResponse(BaseModel):
 
 class RenameChatRequest(BaseModel):
     title: str
+
+class CreateNewChatRequest(BaseModel):
+    driveUrl: str
