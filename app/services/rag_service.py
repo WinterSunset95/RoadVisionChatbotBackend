@@ -68,9 +68,10 @@ CONTEXT:
 USER QUESTION: {user_message}
 
 INSTRUCTIONS:
-1. Answer using ONLY the information in the context above
+1. Answer using the information in the context above
 2. Be specific and cite which sources support your answer
-3. If the context doesn't contain the answer, clearly state: "I don't have that information in the provided documents"
+3. If the context doesn't contain the answer, feel free to add information from other sources, but be sure to cite them and clearly state
+that you are using information from other sources and not the context
 4. Be concise but thorough
 5. Use github markdown formatting for everything"""
     else:
@@ -104,7 +105,18 @@ INSTRUCTIONS:
         }
     )
     
-    message_count = len(chat.messages) + 2
+    # Auto-generate a title if this is the first message from the user
+    if len(chat.messages) == 0:
+        try:
+            title_prompt = f"Generate ONE short, concise title (4-5 words, NO extra text, straight to the title) for the following conversation: \n\nUser: {user_message}\n\nAssistant: {bot_response}"
+            title_response = llm_model.generate_content(title_prompt)
+            new_title = title_response.text.strip().replace('"', '')
+            if new_title:
+                db["chats"].update_one({"_id": chat_id}, {"$set": {"title": new_title, "updated_at": now}})
+                print(f"✅ Updated title to: {new_title}")
+        except Exception as api_error:
+            print(f"❌ Could not Auto-generate title for chat {chat_id}: {api_error}")
     
     # 5. Return response
+    message_count = len(chat.messages) + 2
     return {"reply": bot_response, "sources": sources, "message_count": message_count}
