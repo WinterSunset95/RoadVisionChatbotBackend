@@ -5,18 +5,48 @@ This is the backend for the RoadGPT chatbot. Built with FastAPI.
 ## Setting up the developer environment
 
 ### Linux
-1. Clone the repository: `git clone https://github.com/WinterSunset95/RoadVisionChatbotBackend && cd RoadVisionChatbotBackend`
-2. (Optional but recommended) Create a virtual environment: `python3 -m venv .venv`
-3. Activate the virtual environment: `source .venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Run the startup script: `python app.py`
+1. Clone the repository:
+```
+git clone https://github.com/WinterSunset95/RoadVisionChatbotBackend && cd RoadVisionChatbotBackend
+```
+2. (Optional but recommended) Create a virtual environment:
+```
+python3 -m venv .venv
+```
+3. Activate the virtual environment:
+```
+source .venv/bin/activate
+```
+4. Install dependencies:
+```
+pip install -r requirements.txt
+```
+5. Run the startup script:
+```
+python app.py
+```
 
 ### Windows
-1. Clone the repository: `git clone https://github.com/WinterSunset95/RoadVisionChatbotBackend && cd RoadVisionChatbotBackend`
-2. (Optional but recommended) Create a virtual environment: `python -m venv .venv`
-3. Activate the virtual environment: `.\.venv\Scripts\activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Run the startup script: `python app.py`
+1. Clone the repository:
+```
+git clone https://github.com/WinterSunset95/RoadVisionChatbotBackend && cd RoadVisionChatbotBackend
+```
+2. (Optional but recommended) Create a virtual environment:
+```
+python -m venv .venv
+```
+3. Activate the virtual environment:
+```
+.\.venv\Scripts\activate
+```
+4. Install dependencies:
+```
+pip install -r requirements.txt
+```
+5. Run the startup script:
+```
+python app.py
+```
 
 ## Requirements (Environment Variables, Credential files, etc.)
 
