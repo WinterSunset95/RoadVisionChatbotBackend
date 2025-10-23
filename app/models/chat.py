@@ -69,4 +69,4 @@ class RenameChatRequest(BaseModel):
     title: str
 
 class CreateNewChatRequest(BaseModel):
-    driveUrl: str
+    driveUrl: Optional[str]

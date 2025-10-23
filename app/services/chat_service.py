@@ -37,7 +37,7 @@ def get_all_chats(db: Database) -> List[ChatMetadata]:
         )
     return response_chats
 
-def create_new_chat(db: Database, payload: CreateNewChatRequest, background_tasks: BackgroundTasks) -> ChatMetadata:
+def create_new_chat(db: Database, payload: Optional[CreateNewChatRequest], background_tasks: BackgroundTasks) -> ChatMetadata:
     """Create a new chat session in MongoDB."""
     chat_count = db["chats"].count_documents({})
     now = get_consistent_timestamp()

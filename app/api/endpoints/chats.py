@@ -16,9 +16,9 @@ def get_chats(db: Database = Depends(get_database)):
 
 @router.post("/chats", response_model=ChatMetadata, status_code=status.HTTP_201_CREATED, tags=["Chats"])
 def create_chat(
-        payload: CreateNewChatRequest,
         background_tasks: BackgroundTasks,
-        db: Database = Depends(get_database)
+        db: Database = Depends(get_database),
+        payload: Optional[CreateNewChatRequest] = None,
     ):
     """Create a new chat session and start importing documents from Google Drive"""
     return chat_service.create_new_chat(db, payload, background_tasks)
