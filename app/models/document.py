@@ -30,10 +30,19 @@ class DocumentMetadata(BaseModel):
     chunks: int
     status: str
 
+class UploadJob(BaseModel):
+    job_id: str
+    filename: str
+    chat_id: str
+    status: str
+    stage: str
+    progress: float
+
 class ProcessingJob(BaseModel):
     name: str
     job_id: str
     status: str
+    progress: float
 
 class ChatDocumentsResponse(BaseModel):
     pdfs: List[DocumentMetadata]
