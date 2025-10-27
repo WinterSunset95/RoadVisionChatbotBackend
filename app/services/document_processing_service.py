@@ -4,7 +4,7 @@ import traceback
 
 from app.core.services import pdf_processor, vector_store, upload_jobs
 from app.db.mongo_client import MongoClientConnection
-from app.models.document import EmbeddedDocument
+from app.models.document import EmbeddedDocument, ProcessingStage, ProcessingStatus, UploadJob
 from app.utils import get_consistent_timestamp, get_file_hash
 from app.config import settings
 
@@ -13,8 +13,14 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
     Background task to process a PDF file.
     This function gets its own database connection.
     """
-    status = upload_jobs.get(job_id, {})
-    status.update({"status": "processing", "started_at": get_consistent_timestamp()})
+    upload_job = upload_jobs.get(job_id, {})
+    if type(upload_job) is not UploadJob:
+        return
+
+    upload_job.status = ProcessingStatus.PROCESSING
+    upload_job.stage = ProcessingStage.EXTRACTING_CONTENT
+    upload_job.progress = 30
+    # status.update({"status": "processing", "started_at": get_consistent_timestamp()})
 
     client_conn = None
     try:
@@ -28,11 +34,16 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
         
         if not chunks:
             raise Exception("No content extracted from PDF")
+
+        upload_job.stage = ProcessingStage.ADDING_TO_VECTOR_STORE
+        upload_job.progress = 60
         
         # 2. Add chunks to vector store
         collection = vector_store.get_or_create_collection(chat_id_str)
         added_count = vector_store.add_chunks(collection, chunks)
         
+        upload_job.stage = ProcessingStage.SAVING_METADATA
+        upload_job.progress = 90
         # 3. Save document metadata to DB
         now = get_consistent_timestamp()
         new_document = EmbeddedDocument(
@@ -53,21 +64,19 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
         )
         
         # 4. Update job status to 'done'
-        status.update({
-            "status": "done",
-            "finished_at": now,
-            "chunks_added": added_count
-        })
+        upload_job.status = ProcessingStatus.FINISHED
+        upload_job.progress = 100
+        upload_job.finished_at = now
+        upload_job.chunks_added = added_count
         print(f"✅ PDF {filename} processed successfully for job {job_id}")
 
     except Exception as e:
         error_msg = str(e)
         print(f"❌ Processing error for job {job_id}: {error_msg}")
         traceback.print_exc()
-        status.update({
-            "status": "error", "error": error_msg,
-            "finished_at": get_consistent_timestamp()
-        })
+        upload_job.status = ProcessingStatus.FAILED
+        upload_job.error = error_msg
+        upload_job.finished_at = get_consistent_timestamp()
     
     finally:
         if client_conn and client_conn.client:

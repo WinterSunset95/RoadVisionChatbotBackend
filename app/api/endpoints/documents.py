@@ -1,10 +1,11 @@
+from typing import List
 import uuid
 import tempfile
 import os
 import stat
 from fastapi import APIRouter, HTTPException, Path, UploadFile, File, BackgroundTasks, status, Depends
 from pymongo.database import Database
-from app.models.document import ChatDocumentsResponse, UploadAcceptedResponse, DocumentMetadata, UploadJob
+from app.models.document import ChatDocumentsResponse, ProcessingJob, ProcessingStage, ProcessingStatus, UploadAcceptedResponse, DocumentMetadata, UploadJob
 from app.models.chat import Chat
 from app.core.services import upload_jobs, vector_store
 from app.db.mongo_client import get_database
@@ -54,11 +55,14 @@ async def upload_pdf(
     job_id = str(uuid.uuid4())
     upload_jobs[job_id] = UploadJob(
         job_id = job_id,
-        status="queued",
+        status=ProcessingStatus.QUEUED,
         chat_id=str(chat_id),
         filename=pdf.filename or "unknown-file.pdf",
         progress=0,
-        stage="upload",
+        stage=ProcessingStage.NOT_PROCESSING,
+        finished_at="",
+        chunks_added=0,
+        error=None
     )
     background_tasks.add_task(process_uploaded_pdf, temp_path, str(chat_id), pdf.filename or "unknown-file.pdf", job_id)
 
@@ -84,11 +88,11 @@ def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
     pdfs = [DocumentMetadata(name=doc.filename, chunks=doc.chunks_count, status=doc.status) for doc in chat.documents if doc.doc_type == 'pdf']
     excel = [DocumentMetadata(name=doc.filename, chunks=doc.chunks_count, status=doc.status) for doc in chat.documents if doc.doc_type == 'excel']
 
-    processing_jobs = [
-        {"name": job.get("filename"), "job_id": jid, "status": job.get("status")}
-        for jid, job in upload_jobs.items()
-        if job.get("chat_id") == str(chat_id) and job.get("status") in ["queued", "processing"]
-    ]
+    processing_jobs: List[ProcessingJob] = []
+    for jid, job in upload_jobs.items():
+        processing_job = ProcessingJob(name=job.filename, job_id=jid, status=job.status, stage=job.stage, progress=job.progress)
+        if job.chat_id == str(chat_id):
+            processing_jobs.append(processing_job)
 
     return {
         "pdfs": pdfs, "xlsx": excel, "processing": processing_jobs,

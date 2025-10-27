@@ -5,7 +5,7 @@ import traceback
 import time
 from pathlib import Path
 
-from llama_parse import LlamaParse
+from llama_parse import LlamaParse, ResultType
 import pytesseract
 from PIL import Image
 import fitz  # PyMuPDF
@@ -24,7 +24,7 @@ class PDFProcessor:
         if llama_key:
             self.llama_parser = LlamaParse(
                 api_key=llama_key,
-                result_type="markdown",
+                result_type=ResultType.MD,
                 parsing_instruction="Extract all text, tables, and structure.",
                 num_workers=2,
                 verbose=False,

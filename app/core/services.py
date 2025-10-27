@@ -1,4 +1,3 @@
-from typing import Dict
 import tiktoken
 import chromadb
 from chromadb.config import Settings
@@ -35,7 +34,7 @@ try:
     vector_store = VectorStoreManager(chroma_client, embedding_model)
     
     # This mimics the legacy global state for now. Will be replaced in Phase 3 with Redis.
-    upload_jobs: Dict[str, UploadJob] = {}
+    upload_jobs: dict[str, UploadJob] = {}
     # active_conversations and document_store are now handled by the database.
 
     print("--- Core Services Initialized Successfully ---")
