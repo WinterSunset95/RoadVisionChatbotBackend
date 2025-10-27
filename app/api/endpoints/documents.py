@@ -4,7 +4,7 @@ import os
 import stat
 from fastapi import APIRouter, HTTPException, Path, UploadFile, File, BackgroundTasks, status, Depends
 from pymongo.database import Database
-from app.models.document import ChatDocumentsResponse, UploadAcceptedResponse, DocumentMetadata
+from app.models.document import ChatDocumentsResponse, UploadAcceptedResponse, DocumentMetadata, UploadJob
 from app.models.chat import Chat
 from app.core.services import upload_jobs, vector_store
 from app.db.mongo_client import get_database
@@ -52,10 +52,15 @@ async def upload_pdf(
 
     # Start background processing
     job_id = str(uuid.uuid4())
-    upload_jobs[job_id] = {
-        "job_id": job_id, "status": "queued", "chat_id": str(chat_id), "filename": pdf.filename
-    }
-    background_tasks.add_task(process_uploaded_pdf, temp_path, str(chat_id), pdf.filename, job_id)
+    upload_jobs[job_id] = UploadJob(
+        job_id = job_id,
+        status="queued",
+        chat_id=str(chat_id),
+        filename=pdf.filename or "unknown-file.pdf",
+        progress=0,
+        stage="upload",
+    )
+    background_tasks.add_task(process_uploaded_pdf, temp_path, str(chat_id), pdf.filename or "unknown-file.pdf", job_id)
 
     return {"message": "Upload accepted", "job_id": job_id, "processing": True}
 
