@@ -12,7 +12,8 @@ import tempfile
 import uuid
 
 from app.config import settings
-from app.core.services import upload_jobs
+from app.core.global_stores import upload_jobs
+from app.models.document import ProcessingJob, ProcessingStage, ProcessingStatus, UploadJob
 from app.services.document_processing_service import process_uploaded_pdf
 
 
@@ -87,6 +88,20 @@ def download_files_from_drive(drive_url: str, conversation_id: str):
             file_name = item['name']
             print(f"⬇️ Downloading {file_name} ({file_id})")
 
+            job_id = str(uuid.uuid4())
+            upload_jobs[job_id] = UploadJob(
+                job_id=job_id,
+                filename=file_name,
+                chat_id=conversation_id,
+                status=ProcessingStatus.DOWNLOADING,
+                stage=ProcessingStage.NOT_PROCESSING,
+                progress=0,
+                finished_at="",
+                chunks_added=0,
+                error=None
+            )
+            new_upload_job = upload_jobs[job_id]
+
             request = service.files().get_media(fileId=file_id)
             
             with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file_name}") as tmp_file:
@@ -95,19 +110,13 @@ def download_files_from_drive(drive_url: str, conversation_id: str):
                 while not done:
                     status, done = downloader.next_chunk()
                     print(f"Download {int(status.progress() * 100)}%.")
+                    new_upload_job.progress = int(status.progress() * 100)
 
                 temp_path = tmp_file.name
 
             print(f"📂 File saved to temporary path: {temp_path}")
             
-            # Now, process the downloaded file
-            job_id = str(uuid.uuid4())
-            upload_jobs[job_id] = {
-                "filename": file_name,
-                "status": "queued",
-                "chat_id": conversation_id,
-            }
-            # Note: process_uploaded_pdf will handle cleanup of the temp file
+            new_upload_job.status = ProcessingStatus.QUEUED
             process_uploaded_pdf(temp_path, conversation_id, file_name, job_id)
 
     except HttpError as error:

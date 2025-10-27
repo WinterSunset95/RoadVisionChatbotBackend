@@ -1,6 +1,5 @@
 from uuid import UUID
 from typing import List, Optional
-from click import Option
 from fastapi import APIRouter, HTTPException, Body, status, Depends, BackgroundTasks
 from pymongo.database import Database
 from app.models.chat import ChatMetadata, Message, NewMessageRequest, NewMessageResponse, RenameChatRequest, CreateNewChatRequest

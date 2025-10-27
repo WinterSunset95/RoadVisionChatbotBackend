@@ -5,16 +5,20 @@ import traceback
 import time
 from pathlib import Path
 
-from llama_parse import LlamaParse
+from llama_parse import LlamaParse, ResultType
 import pytesseract
 from PIL import Image
 import fitz  # PyMuPDF
 import pdfplumber
 
 from app.config import settings
+from app.core.global_stores import upload_jobs
+from app.models.document import ProcessingStage
 
 class PDFProcessor:
     """Enhanced PDF processing with LlamaParse OCR"""
+
+    job_id = None
     
     def __init__(self, embedding_model, tokenizer):
         self.embedding_model = embedding_model
@@ -24,7 +28,7 @@ class PDFProcessor:
         if llama_key:
             self.llama_parser = LlamaParse(
                 api_key=llama_key,
-                result_type="markdown",
+                result_type=ResultType.MD,
                 parsing_instruction="Extract all text, tables, and structure.",
                 num_workers=2,
                 verbose=False,
@@ -54,10 +58,19 @@ class PDFProcessor:
             cleaned[k] = str_val if str_val else "unknown"
         return cleaned
     
-    def create_smart_chunks(self, text: str, metadata: Dict) -> List[Dict]:
+    def update_progress(self, stage: ProcessingStage, progress: float) -> None:
+        print(f"📄 Progress: {stage} {progress}%")
+        if not self.job_id:
+            return
+        upload_jobs[self.job_id].stage = stage
+        upload_jobs[self.job_id].progress = progress
+
+    def create_smart_chunks(self, text: str, curr_page_no: int, no_of_pages: int, metadata: Dict) -> List[Dict]:
         """Create overlapping chunks with metadata"""
         words = text.split()
         chunks = []
+
+        no_of_words = len(words)
         
         if len(words) <= settings.CHUNK_SIZE:
             return [{
@@ -70,6 +83,9 @@ class PDFProcessor:
         start = 0
         
         while start < len(words):
+            progress_from_previous_pages = (curr_page_no-1)/no_of_pages
+            progress_on_current_page = (start/no_of_words) * (1/no_of_pages)
+            self.update_progress(ProcessingStage.CREATING_CHUNKS, (progress_from_previous_pages + progress_on_current_page) * 100)
             end = min(start + settings.CHUNK_SIZE, len(words))
             chunk_words = words[start:end]
             chunk_text = ' '.join(chunk_words)
@@ -98,10 +114,13 @@ class PDFProcessor:
         
         try:
             print(f"🔍 LlamaParse processing for {Path(pdf_path).name}...")
+            self.update_progress(ProcessingStage.LLAMA_LOADING, 0)
             documents = self.llama_parser.load_data(pdf_path)
             
             page_texts = {}
+            no_of_pages = len(documents)
             for doc in documents:
+                self.update_progress(ProcessingStage.EXTRACTING_CONTENT, (documents.index(doc)/no_of_pages)*100)
                 page_num_str = doc.metadata.get('page_label', doc.metadata.get('page', '1'))
                 
                 try:
@@ -129,8 +148,11 @@ class PDFProcessor:
         """Fallback extraction using PyMuPDF"""
         page_texts = {}
         try:
+            self.update_progress(ProcessingStage.PYMUPDF_LOADING, 0)
             doc = fitz.open(pdf_path)
+            no_of_pages = doc.page_count
             for page_num in range(doc.page_count):
+                self.update_progress(ProcessingStage.EXTRACTING_CONTENT, (page_num/no_of_pages)*100)
                 page = doc[page_num]
                 text = page.get_text()
                 if text and text.strip():
@@ -146,8 +168,11 @@ class PDFProcessor:
         page_texts = {}
         try:
             print(f"🔎 Tesseract OCR processing...")
+            self.update_progress(ProcessingStage.TESSERACT_LOADING, 0)
             doc = fitz.open(pdf_path)
+            no_of_pages = doc.page_count
             for i, page in enumerate(doc):
+                self.update_progress(ProcessingStage.EXTRACTING_CONTENT, (i/no_of_pages)*100)
                 pix = page.get_pixmap(dpi=200) 
                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                 text = pytesseract.image_to_string(img)
@@ -164,10 +189,16 @@ class PDFProcessor:
         tables = []
         try:
             with pdfplumber.open(pdf_path) as pdf:
+                total_pages = len(pdf.pages)
                 for page_num, page in enumerate(pdf.pages, start=1):
                     page_tables = page.extract_tables() or []
                     
+                    no_of_tables = len(page_tables)
                     for table_idx, table in enumerate(page_tables):
+                        progress_from_previous_pages = (page_num-1)/total_pages
+                        progress_on_current_page = ((table_idx+1)/no_of_tables) * (1/total_pages)
+                        total_progress = progress_from_previous_pages + progress_on_current_page
+                        self.update_progress(ProcessingStage.EXTRACTING_TABLES, total_progress*100)
                         if len(table) < 2: continue
                         headers = table[0] if table[0] else []
                         table_text = f"Table {table_idx + 1} on page {page_num}:\n"
@@ -187,8 +218,9 @@ class PDFProcessor:
             print(f"⚠️  Table extraction error: {e}")
         return tables
     
-    def process_pdf(self, pdf_path: str, doc_id: str, filename: str) -> Tuple[List[Dict], Dict]:
+    def process_pdf(self, job_id: str, pdf_path: str, doc_id: str, filename: str) -> Tuple[List[Dict], Dict]:
         """Main PDF processing pipeline"""
+        self.job_id = job_id
         print(f"\n{'='*60}\n📄 Processing PDF: {filename}\n{'='*60}")
         start_time = time.time()
         
@@ -205,10 +237,12 @@ class PDFProcessor:
         tables = self.extract_tables(pdf_path)
         
         all_chunks = []
+        no_of_pages = len(page_texts)
         for page_num, text in page_texts.items():
+            # print(f"📄 Processing page {page_num} of {no_of_pages}")
             if not text.strip(): continue
             base_metadata = {"doc_id": str(doc_id), "source": str(filename), "page": str(page_num), "type": "text", "doc_type": "pdf"}
-            chunks = self.create_smart_chunks(text, base_metadata)
+            chunks = self.create_smart_chunks(text, page_num, no_of_pages, base_metadata)
             all_chunks.extend(chunks)
         
         for table in tables:
