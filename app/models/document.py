@@ -40,7 +40,12 @@ class ProcessingStatus(Enum):
 
 class ProcessingStage(Enum):
     NOT_PROCESSING = "not_processing"
+    LLAMA_LOADING = "llama_loading"
+    PYMUPDF_LOADING = "pymupdf_loading"
+    TESSERACT_LOADING = "tesseract_loading"
     EXTRACTING_CONTENT = "extracting_content"
+    EXTRACTING_TABLES = "extracting_tables"
+    CREATING_CHUNKS = "creating_chunks"
     ADDING_TO_VECTOR_STORE = "adding_to_vector_store"
     SAVING_METADATA = "saving_metadata"
 

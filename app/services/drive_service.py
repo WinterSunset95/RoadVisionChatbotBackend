@@ -12,7 +12,7 @@ import tempfile
 import uuid
 
 from app.config import settings
-from app.core.services import upload_jobs
+from app.core.global_stores import upload_jobs
 from app.models.document import ProcessingJob, ProcessingStage, ProcessingStatus, UploadJob
 from app.services.document_processing_service import process_uploaded_pdf
 

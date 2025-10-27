@@ -2,7 +2,8 @@ import os
 from uuid import UUID, uuid4
 import traceback
 
-from app.core.services import pdf_processor, vector_store, upload_jobs
+from app.core.services import pdf_processor, vector_store
+from app.core.global_stores import upload_jobs
 from app.db.mongo_client import MongoClientConnection
 from app.models.document import EmbeddedDocument, ProcessingStage, ProcessingStatus, UploadJob
 from app.utils import get_consistent_timestamp, get_file_hash
@@ -19,7 +20,7 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
 
     upload_job.status = ProcessingStatus.PROCESSING
     upload_job.stage = ProcessingStage.EXTRACTING_CONTENT
-    upload_job.progress = 30
+    upload_job.progress = 0
     # status.update({"status": "processing", "started_at": get_consistent_timestamp()})
 
     client_conn = None
@@ -30,20 +31,20 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
 
         # 1. Process PDF to get chunks and stats
         doc_id_str = str(uuid4())
-        chunks, stats = pdf_processor.process_pdf(temp_path, doc_id_str, filename)
+        chunks, stats = pdf_processor.process_pdf(job_id, temp_path, doc_id_str, filename)
         
         if not chunks:
             raise Exception("No content extracted from PDF")
 
         upload_job.stage = ProcessingStage.ADDING_TO_VECTOR_STORE
-        upload_job.progress = 60
+        upload_job.progress = 0
         
         # 2. Add chunks to vector store
         collection = vector_store.get_or_create_collection(chat_id_str)
         added_count = vector_store.add_chunks(collection, chunks)
         
         upload_job.stage = ProcessingStage.SAVING_METADATA
-        upload_job.progress = 90
+        upload_job.progress = 0
         # 3. Save document metadata to DB
         now = get_consistent_timestamp()
         new_document = EmbeddedDocument(

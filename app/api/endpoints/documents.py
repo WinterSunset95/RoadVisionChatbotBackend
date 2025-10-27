@@ -7,7 +7,8 @@ from fastapi import APIRouter, HTTPException, Path, UploadFile, File, Background
 from pymongo.database import Database
 from app.models.document import ChatDocumentsResponse, ProcessingJob, ProcessingStage, ProcessingStatus, UploadAcceptedResponse, DocumentMetadata, UploadJob
 from app.models.chat import Chat
-from app.core.services import upload_jobs, vector_store
+from app.core.services import vector_store
+from app.core.global_stores import upload_jobs
 from app.db.mongo_client import get_database
 from app.config import settings
 from app.services.document_processing_service import process_uploaded_pdf
