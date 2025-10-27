@@ -1,3 +1,4 @@
+from typing import Dict
 import tiktoken
 import chromadb
 from chromadb.config import Settings
@@ -6,6 +7,7 @@ from sentence_transformers import SentenceTransformer
 from llama_parse import LlamaParse
 
 from app.config import settings
+from app.models.document import UploadJob
 from app.services.document_service import PDFProcessor, ExcelProcessor
 from app.db.vector_store import VectorStoreManager
 # document_store is replaced by DB CRUD operations
@@ -33,7 +35,7 @@ try:
     vector_store = VectorStoreManager(chroma_client, embedding_model)
     
     # This mimics the legacy global state for now. Will be replaced in Phase 3 with Redis.
-    upload_jobs: dict = {}
+    upload_jobs: Dict[str, UploadJob] = {}
     # active_conversations and document_store are now handled by the database.
 
     print("--- Core Services Initialized Successfully ---")
