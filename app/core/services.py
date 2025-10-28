@@ -1,6 +1,5 @@
 import tiktoken
-import chromadb
-from chromadb.config import Settings
+import weaviate
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer
 from llama_parse import LlamaParse
@@ -20,18 +19,21 @@ try:
 
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
     print("✅ SentenceTransformer loaded")
-    
-    chroma_client = chromadb.PersistentClient(
-        path=str(settings.CHROMA_PATH),
-        settings=Settings(anonymized_telemetry=False, allow_reset=True)
-    )
-    print(f"✅ ChromaDB initialized at {settings.CHROMA_PATH}")
-    
+
+    try:
+        weaviate_client = weaviate.connect_to_local()
+        if not weaviate_client.is_ready():
+            raise Exception("Weaviate is not ready")
+        print("✅ Weaviate client connected")
+    except Exception as e:
+        print(f"❌ Could not connect to Weaviate: {e}")
+        weaviate_client = None
+
     tokenizer = tiktoken.get_encoding("cl100k_base")
 
     pdf_processor = PDFProcessor(embedding_model, tokenizer)
     excel_processor = ExcelProcessor(embedding_model, tokenizer) 
-    vector_store = VectorStoreManager(chroma_client, embedding_model)
+    vector_store = VectorStoreManager(weaviate_client, embedding_model)
     
     # This mimics the legacy global state for now. Will be replaced in Phase 3 with Redis.
     # active_conversations and document_store are now handled by the database.
