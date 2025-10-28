@@ -41,6 +41,7 @@ services:
       USE_GOOGLE_AUTH: 'true'
       CLUSTER_HOSTNAME: 'node1'
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_APIKEY: ${GOOGLE_APIKEY}
 
 volumes:
   mongodb_data:

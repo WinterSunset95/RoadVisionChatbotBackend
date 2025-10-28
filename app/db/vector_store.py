@@ -14,6 +14,7 @@ class VectorStoreManager:
     def __init__(self, weaviate_client, embedding_model):
         self.client = weaviate_client
         self.embedding_model = embedding_model
+        print("✅ VectorStoreManager initialized")
     
     def get_or_create_collection(self, chat_id: str) -> Collection:
         """Get or create collection for chat in Weaviate."""

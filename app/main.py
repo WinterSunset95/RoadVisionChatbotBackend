@@ -37,12 +37,9 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup_event():
         print("--- Application Startup ---")
-        ensure_directory_exists(settings.CHROMA_PATH)
-        ensure_directory_exists(settings.DATA_DIR)
-        print(f"📦 Vector DB Path: {settings.CHROMA_PATH}")
-        print(f"📄 Data Path: {settings.DATA_DIR}")
         
         # The services are initialized when the module is imported
+        from app.core.global_stores import upload_jobs
         from app.core import services
         
         # Legacy file-based chat history loading is no longer needed.
