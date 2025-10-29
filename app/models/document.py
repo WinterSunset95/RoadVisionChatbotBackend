@@ -67,10 +67,25 @@ class ProcessingJob(BaseModel):
     stage: ProcessingStage
     progress: float
 
+class DriveFile(BaseModel):
+    # Some drive related metadata
+    id: str
+    name: str
+    mime_type: str = Field(..., alias="mimeType")
+    size: Optional[str] = None
+
+class DriveFolder(BaseModel):
+    id: str
+    files: List[DriveFile]
+    subfolders: List['DriveFolder']
+
+DriveFolder.model_rebuild()
+
 class ChatDocumentsResponse(BaseModel):
     pdfs: List[DocumentMetadata]
     xlsx: List[DocumentMetadata]
     processing: List[ProcessingJob]
+    drive_folders: List[DriveFolder]
     total_docs: int
     chat_id: str
 
