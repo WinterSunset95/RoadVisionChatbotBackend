@@ -10,10 +10,13 @@ import os
 import re
 import tempfile
 import uuid
+from typing import List
+from uuid import UUID
+from pymongo.database import Database
 
 from app.config import settings
 from app.core.global_stores import upload_jobs
-from app.modules.askai.models.document import ProcessingJob, ProcessingStage, ProcessingStatus, UploadJob
+from app.modules.askai.models.document import ProcessingJob, ProcessingStage, ProcessingStatus, UploadJob, DriveFile, DriveFolder
 from app.modules.askai.services.document_processing_service import process_uploaded_pdf
 
 
@@ -55,6 +58,61 @@ def authenticate_google_drive():
     except HttpError as error:
         print(f"An error occurred during authentication: {error}")
         return None
+
+def _scan_folder_recursively(service, folder_id: str) -> DriveFolder:
+    """Helper to recursively scan a Google Drive folder."""
+    try:
+        # List files and folders in the current folder
+        query = f"'{folder_id}' in parents and trashed=false"
+        # Request all fields needed for DriveFile model
+        fields = "files(id, name, mimeType, size)"
+        results = service.files().list(q=query, fields=fields).execute()
+        items = results.get('files', [])
+
+        files: List[DriveFile] = []
+        subfolders: List[DriveFolder] = []
+        for item in items:
+            if item.get('mimeType') == 'application/vnd.google-apps.folder':
+                subfolders.append(_scan_folder_recursively(service, item['id']))
+            else:
+                # The 'size' field might be missing for certain Google Docs formats
+                if 'size' not in item:
+                    item['size'] = "0"
+                files.append(DriveFile.model_validate(item))
+
+        return DriveFolder(
+            id=folder_id,
+            files=files,
+            subfolders=subfolders
+        )
+    except HttpError as error:
+        print(f"An error occurred while scanning folder {folder_id}: {error}")
+        raise Exception(f"Failed to access Google Drive folder. Please check permissions and URL.") from error
+
+def add_drive_folder_to_chat(db: Database, chat_id: UUID, drive_url: str) -> DriveFolder:
+    """Scans a Google Drive folder and adds its structure to a chat document."""
+    service = authenticate_google_drive()
+    if not service:
+        raise Exception("Could not authenticate with Google Drive.")
+
+    match = re.search(r'/folders/([a-zA-Z0-9_-]+)', drive_url)
+    if not match:
+        raise ValueError("Invalid Google Drive folder URL provided.")
+    folder_id = match.group(1)
+
+    # Check if this folder is already associated with the chat
+    chat_doc = db["chats"].find_one({"_id": chat_id, "drive_folders.id": folder_id})
+    if chat_doc:
+        raise ValueError(f"Drive folder {folder_id} is already added to this chat.")
+
+    folder_structure = _scan_folder_recursively(service, folder_id)
+
+    db["chats"].update_one(
+        {"_id": chat_id},
+        {"$push": {"drive_folders": folder_structure.model_dump()}}
+    )
+    print(f"✅ Added Drive folder '{folder_id}' to chat '{chat_id}'")
+    return folder_structure
 
 def download_files_from_drive(drive_url: str, conversation_id: str):
     """
