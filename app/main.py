@@ -50,9 +50,13 @@ def create_app() -> FastAPI:
     async def shutdown_event():
         print("--- Application Shutdown ---")
         from app.core.services import weaviate_client
+        from app.db.mongo_client import mongo_client
         if weaviate_client:
             weaviate_client.close()
             print("Weaviate client closed.")
+        if mongo_client and mongo_client.client:
+            mongo_client.client.close()
+            print("MongoDB client closed.")
         print("--- Shutdown Complete ---")
 
     app.include_router(api_v1_router, prefix="/api/v1")
