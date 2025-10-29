@@ -3,7 +3,7 @@ from typing import Dict, List
 from pymongo.database import Database
 
 from app.core.services import llm_model, vector_store
-from app.models.chat import Chat, EmbeddedMessage
+from app.modules.askai.models.chat import Chat, EmbeddedMessage
 from app.config import settings
 from app.utils import get_consistent_timestamp
 

@@ -13,7 +13,7 @@ import pdfplumber
 
 from app.config import settings
 from app.core.global_stores import upload_jobs
-from app.models.document import ProcessingStage
+from app.modules.askai.models.document import ProcessingStage
 
 class PDFProcessor:
     """Enhanced PDF processing with LlamaParse OCR"""

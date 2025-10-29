@@ -4,8 +4,8 @@ from fastapi import BackgroundTasks
 from pymongo.database import Database
 
 from app.core.services import vector_store
-from app.models.chat import Chat, ChatMetadata, Message, CreateNewChatRequest
-from app.services.drive_service import download_files_from_drive
+from app.modules.askai.models.chat import Chat, ChatMetadata, Message, CreateNewChatRequest
+from app.modules.askai.services.drive_service import download_files_from_drive
 from app.utils import get_consistent_timestamp
 
 def get_all_chats(db: Database) -> List[ChatMetadata]:

@@ -5,7 +5,7 @@ import traceback
 from app.core.services import pdf_processor, vector_store
 from app.core.global_stores import upload_jobs
 from app.db.mongo_client import MongoClientConnection
-from app.models.document import EmbeddedDocument, ProcessingStage, ProcessingStatus, UploadJob
+from app.modules.askai.models.document import EmbeddedDocument, ProcessingStage, ProcessingStatus, UploadJob
 from app.utils import get_consistent_timestamp, get_file_hash
 from app.config import settings
 

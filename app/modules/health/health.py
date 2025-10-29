@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.models.health import HealthResponse
+from app.modules.health.models.health import HealthResponse
 from app.utils import get_consistent_timestamp
 from app.core.services import pdf_processor
 

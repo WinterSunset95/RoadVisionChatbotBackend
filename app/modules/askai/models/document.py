@@ -1,10 +1,11 @@
 from enum import Enum
 from typing import List, Optional, Any
 from uuid import UUID, uuid4
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field, BaseModel, ConfigDict
+from app.db.base import MongoDBModel
 
 
-class EmbeddedDocument(BaseModel):
+class EmbeddedDocument(MongoDBModel):
     """
     Represents a document embedded within a Chat document in MongoDB.
     """
@@ -17,12 +18,6 @@ class EmbeddedDocument(BaseModel):
     status: str = "active"
     uploaded_at: str
     processing_stats: Optional[dict[str, Any]] = None
-
-    model_config = ConfigDict(
-        populate_by_name=True,
-        arbitrary_types_allowed=True,
-        json_encoders={UUID: str},
-    )
 
 
 class DocumentMetadata(BaseModel):
@@ -67,10 +62,25 @@ class ProcessingJob(BaseModel):
     stage: ProcessingStage
     progress: float
 
+class DriveFile(BaseModel):
+    # Some drive related metadata
+    id: str
+    name: str
+    mime_type: str = Field(..., alias="mimeType")
+    size: Optional[str] = None
+
+class DriveFolder(BaseModel):
+    id: str
+    files: List[DriveFile]
+    subfolders: List['DriveFolder']
+
+DriveFolder.model_rebuild()
+
 class ChatDocumentsResponse(BaseModel):
     pdfs: List[DocumentMetadata]
     xlsx: List[DocumentMetadata]
     processing: List[ProcessingJob]
+    drive_folders: List[DriveFolder]
     total_docs: int
     chat_id: str
 

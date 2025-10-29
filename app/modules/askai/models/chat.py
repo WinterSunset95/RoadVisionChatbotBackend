@@ -1,18 +1,19 @@
 from typing import List, Optional
 from uuid import UUID, uuid4
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field, BaseModel
+from app.db.base import MongoDBModel
 from .document import EmbeddedDocument
 
 # --- Models for data stored in MongoDB ---
 
-class EmbeddedMessage(BaseModel):
+class EmbeddedMessage(MongoDBModel):
     """Represents a message embedded in a Chat document."""
     id: UUID = Field(default_factory=uuid4)
     sender: str  # 'user' or 'bot'
     text: str
     timestamp: str
 
-class Chat(BaseModel):
+class Chat(MongoDBModel):
     """The main Chat document model for MongoDB."""
     id: UUID = Field(default_factory=uuid4, alias="_id")
     title: str
@@ -20,12 +21,6 @@ class Chat(BaseModel):
     updated_at: str
     documents: List[EmbeddedDocument] = []
     messages: List[EmbeddedMessage] = []
-
-    model_config = ConfigDict(
-        populate_by_name=True,
-        arbitrary_types_allowed=True,
-        json_encoders={UUID: str},
-    )
 
 # --- Models for API Request/Response (for backward compatibility) ---
 

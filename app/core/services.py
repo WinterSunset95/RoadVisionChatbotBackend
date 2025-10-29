@@ -1,3 +1,5 @@
+from google.generativeai.client import configure
+from google.generativeai.generative_models import GenerativeModel
 import tiktoken
 import weaviate
 import google.generativeai as genai
@@ -5,16 +7,15 @@ from sentence_transformers import SentenceTransformer
 from llama_parse import LlamaParse
 
 from app.config import settings
-from app.models.document import UploadJob
-from app.services.document_service import PDFProcessor, ExcelProcessor
+from app.modules.askai.models.document import UploadJob
+from app.modules.askai.services.document_service import PDFProcessor, ExcelProcessor
 from app.db.vector_store import VectorStoreManager
-# document_store is replaced by DB CRUD operations
 
 print("--- Initializing Core Services ---")
 
 try:
-    genai.configure(api_key=settings.GOOGLE_API_KEY)
-    llm_model = genai.GenerativeModel("gemini-2.0-flash-exp")
+    configure(api_key=settings.GOOGLE_API_KEY)
+    llm_model = GenerativeModel("gemini-2.0-flash-exp")
     print("✅ Gemini 2.0 Flash configured")
 
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2")

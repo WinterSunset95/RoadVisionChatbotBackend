@@ -1,5 +1,5 @@
 
-from app.models.document import UploadJob
+from app.modules.askai.models.document import UploadJob
 
 
 try:

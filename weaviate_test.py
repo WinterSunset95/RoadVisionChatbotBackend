@@ -3,7 +3,7 @@ from typing import Optional
 
 from weaviate.client import WeaviateClient
 from weaviate.classes.generate import GenerativeConfig
-from app.models.document import ProcessingStage, ProcessingStatus, UploadJob
+from app.modules.askai.models.document import ProcessingStage, ProcessingStatus, UploadJob
 from app.services.document_service import PDFProcessor
 from app.core.services import embedding_model, tokenizer
 from app.core.global_stores import upload_jobs
