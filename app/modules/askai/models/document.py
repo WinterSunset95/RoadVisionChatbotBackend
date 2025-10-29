@@ -84,6 +84,9 @@ class ChatDocumentsResponse(BaseModel):
     total_docs: int
     chat_id: str
 
+class AddDriveRequest(BaseModel):
+    driveUrl: str
+
 class UploadAcceptedResponse(BaseModel):
     message: str
     job_id: str
