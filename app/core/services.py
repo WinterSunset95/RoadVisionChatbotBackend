@@ -21,15 +21,20 @@ try:
     embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
     print("✅ SentenceTransformer loaded")
 
-    try:
-        weaviate_client = weaviate.connect_to_local()
-        if not weaviate_client.is_ready():
-            raise Exception("Weaviate is not ready")
-        print("✅ Weaviate client connected")
-    except Exception as e:
-        print(f"❌ Could not connect to Weaviate: {e}")
-        weaviate_client = None
+    # This will be initialized in the startup event.
+    weaviate_client = None
 
+    def initialize_weaviate_client():
+        global weaviate_client
+        try:
+            weaviate_client = weaviate.connect_to_local()
+            if not weaviate_client.is_ready():
+                raise Exception("Weaviate is not ready")
+            print("✅ Weaviate client connected")
+        except Exception as e:
+            print(f"❌ Could not connect to Weaviate: {e}")
+            weaviate_client = None
+    
     tokenizer = tiktoken.get_encoding("cl100k_base")
 
     pdf_processor = PDFProcessor(embedding_model, tokenizer)
