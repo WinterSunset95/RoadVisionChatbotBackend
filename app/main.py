@@ -3,6 +3,7 @@ import warnings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
+from app.api.v1.router import api_v1_router
 from app.config import settings
 from app.utils import ensure_directory_exists
 
@@ -47,7 +48,10 @@ def create_app() -> FastAPI:
         print("--- Startup Complete ---")
 
     # --- ROUTERS ---
+    # Include the old router for backward compatibility
     app.include_router(api_router, prefix="/api")
+    # Include the new v1 router
+    app.include_router(api_v1_router, prefix="/api/v1")
 
     return app
 
