@@ -1,6 +1,6 @@
 from typing import List, Optional
 from uuid import UUID, uuid4
-from pydantic import Field
+from pydantic import Field, BaseModel
 from app.db.base import MongoDBModel
 from .document import EmbeddedDocument
 
