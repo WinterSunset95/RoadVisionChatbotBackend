@@ -5,12 +5,13 @@ import os
 import stat
 from fastapi import APIRouter, HTTPException, Path, UploadFile, File, BackgroundTasks, status, Depends
 from pymongo.database import Database
-from app.modules.askai.models.document import ChatDocumentsResponse, ProcessingJob, ProcessingStage, ProcessingStatus, UploadAcceptedResponse, DocumentMetadata, UploadJob
+from app.modules.askai.models.document import AddDriveRequest, ChatDocumentsResponse, DriveFolder, ProcessingJob, ProcessingStage, ProcessingStatus, UploadAcceptedResponse, DocumentMetadata, UploadJob
 from app.modules.askai.models.chat import Chat
 from app.core.services import vector_store
 from app.core.global_stores import upload_jobs
 from app.db.mongo_client import get_database
 from app.config import settings
+from app.modules.askai.services import drive_service
 from app.modules.askai.services.document_processing_service import process_uploaded_pdf
 
 router = APIRouter()
@@ -69,6 +70,27 @@ async def upload_pdf(
 
     return {"message": "Upload accepted", "job_id": job_id, "processing": True}
 
+@router.post("/chats/{chat_id}/add-drive", response_model=DriveFolder, tags=["Documents"])
+def add_drive_folder(
+    chat_id: uuid.UUID,
+    payload: AddDriveRequest,
+    db: Database = Depends(get_database)
+):
+    """
+    Scans a public Google Drive folder and adds its file structure to the chat
+    without downloading the files.
+    """
+    chat_doc = db["chats"].find_one({"_id": chat_id})
+    if not chat_doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
+    
+    try:
+        folder_structure = drive_service.add_drive_folder_to_chat(db, chat_id, payload.driveUrl)
+        return folder_structure
+    except (ValueError, Exception) as e:
+        # Catches invalid URLs from service logic and other potential errors.
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
 @router.get("/upload-status/{job_id}", tags=["Documents"])
 def get_upload_status(job_id: str = Path(..., description="The ID of the upload job")):
     """Get the status of an asynchronous upload job"""
@@ -97,7 +119,7 @@ def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
 
     return {
         "pdfs": pdfs, "xlsx": excel, "processing": processing_jobs,
-        "drive_folders": [],
+        "drive_folders": chat.drive_folders,
         "total_docs": len(pdfs) + len(excel) + len(processing_jobs),
         "chat_id": str(chat_id)
     }

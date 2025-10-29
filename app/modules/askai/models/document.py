@@ -63,6 +63,7 @@ class ProcessingJob(BaseModel):
     progress: float
 
 class DriveFile(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     # Some drive related metadata
     id: str
     name: str
@@ -70,6 +71,7 @@ class DriveFile(BaseModel):
     size: Optional[str] = None
 
 class DriveFolder(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
     id: str
     files: List[DriveFile]
     subfolders: List['DriveFolder']
@@ -83,6 +85,9 @@ class ChatDocumentsResponse(BaseModel):
     drive_folders: List[DriveFolder]
     total_docs: int
     chat_id: str
+
+class AddDriveRequest(BaseModel):
+    driveUrl: str
 
 class UploadAcceptedResponse(BaseModel):
     message: str

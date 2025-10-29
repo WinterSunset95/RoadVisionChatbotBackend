@@ -38,13 +38,27 @@ def create_app() -> FastAPI:
     async def startup_event():
         print("--- Application Startup ---")
         
-        # The services are initialized when the module is imported
-        from app.core.global_stores import upload_jobs
+        # Initialize database clients within the startup event
+        from app.db.mongo_client import mongo_client
         from app.core import services
         
-        # Legacy file-based chat history loading is no longer needed.
-        # Database connection is managed by the session dependency.
+        mongo_client.connect()
+        services.initialize_weaviate_client()
+        
         print("--- Startup Complete ---")
+
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        print("--- Application Shutdown ---")
+        from app.core.services import weaviate_client
+        from app.db.mongo_client import mongo_client
+        if weaviate_client:
+            weaviate_client.close()
+            print("Weaviate client closed.")
+        if mongo_client and mongo_client.client:
+            mongo_client.client.close()
+            print("MongoDB client closed.")
+        print("--- Shutdown Complete ---")
 
     app.include_router(api_v1_router, prefix="/api/v1")
 

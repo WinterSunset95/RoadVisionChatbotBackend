@@ -2,7 +2,7 @@ from typing import List, Optional
 from uuid import UUID, uuid4
 from pydantic import Field, BaseModel
 from app.db.base import MongoDBModel
-from .document import EmbeddedDocument
+from .document import EmbeddedDocument, DriveFolder
 
 # --- Models for data stored in MongoDB ---
 
@@ -20,6 +20,7 @@ class Chat(MongoDBModel):
     created_at: str
     updated_at: str
     documents: List[EmbeddedDocument] = []
+    drive_folders: List[DriveFolder] = []
     messages: List[EmbeddedMessage] = []
 
 # --- Models for API Request/Response (for backward compatibility) ---
