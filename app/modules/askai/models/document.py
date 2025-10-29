@@ -1,10 +1,11 @@
 from enum import Enum
 from typing import List, Optional, Any
 from uuid import UUID, uuid4
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
+from app.db.base import MongoDBModel
 
 
-class EmbeddedDocument(BaseModel):
+class EmbeddedDocument(MongoDBModel):
     """
     Represents a document embedded within a Chat document in MongoDB.
     """
@@ -17,12 +18,6 @@ class EmbeddedDocument(BaseModel):
     status: str = "active"
     uploaded_at: str
     processing_stats: Optional[dict[str, Any]] = None
-
-    model_config = ConfigDict(
-        populate_by_name=True,
-        arbitrary_types_allowed=True,
-        json_encoders={UUID: str},
-    )
 
 
 class DocumentMetadata(BaseModel):
