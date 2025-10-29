@@ -11,7 +11,7 @@ from app.core.services import vector_store
 from app.core.global_stores import upload_jobs
 from app.db.mongo_client import get_database
 from app.config import settings
-from app.services.document_processing_service import process_uploaded_pdf
+from app.modules.askai.services.document_processing_service import process_uploaded_pdf
 
 router = APIRouter()
 

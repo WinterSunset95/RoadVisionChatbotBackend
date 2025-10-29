@@ -8,7 +8,7 @@ from llama_parse import LlamaParse
 
 from app.config import settings
 from app.modules.askai.models.document import UploadJob
-from app.services.document_service import PDFProcessor, ExcelProcessor
+from app.modules.askai.services.document_service import PDFProcessor, ExcelProcessor
 from app.db.vector_store import VectorStoreManager
 
 print("--- Initializing Core Services ---")
