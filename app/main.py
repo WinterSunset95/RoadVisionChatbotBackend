@@ -46,6 +46,15 @@ def create_app() -> FastAPI:
         # Database connection is managed by the session dependency.
         print("--- Startup Complete ---")
 
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        print("--- Application Shutdown ---")
+        from app.core.services import weaviate_client
+        if weaviate_client:
+            weaviate_client.close()
+            print("Weaviate client closed.")
+        print("--- Shutdown Complete ---")
+
     app.include_router(api_v1_router, prefix="/api/v1")
 
     return app
