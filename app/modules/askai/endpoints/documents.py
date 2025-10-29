@@ -134,6 +134,38 @@ def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
     """Get all active and processing documents for a specific chat"""
     return _get_chat_docs_data(chat_id, db)
 
+@router.get("/chats/{chat_id}/docs-sse", tags=["Documents"])
+async def stream_chat_docs(
+    chat_id: uuid.UUID,
+    request: Request,
+    db: Database = Depends(get_database)
+):
+    """
+    Streams document status for a chat using Server-Sent Events (SSE).
+    Sends an update whenever the status of a document processing job changes.
+    """
+    async def event_generator():
+        last_data = None
+        while True:
+            if await request.is_disconnected():
+                break
+            
+            try:
+                current_data = _get_chat_docs_data(chat_id, db)
+                if current_data != last_data:
+                    yield json.dumps(current_data)
+                    last_data = current_data
+            except HTTPException:
+                # This can happen if the chat is deleted during an active stream.
+                break
+            except Exception as e:
+                print(f"Error in SSE stream for chat {chat_id}: {e}")
+                break
+                
+            await asyncio.sleep(1)
+            
+    return EventSourceResponse(event_generator())
+
 @router.delete("/chats/{chat_id}/pdfs/{pdf_name}", tags=["Documents"])
 def delete_chat_pdf(chat_id: uuid.UUID, pdf_name: str, db: Database = Depends(get_database)):
     """Delete a specific PDF from a chat"""
