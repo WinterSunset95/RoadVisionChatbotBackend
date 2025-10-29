@@ -5,8 +5,8 @@ import os
 import stat
 from fastapi import APIRouter, HTTPException, Path, UploadFile, File, BackgroundTasks, status, Depends
 from pymongo.database import Database
-from app.models.document import ChatDocumentsResponse, ProcessingJob, ProcessingStage, ProcessingStatus, UploadAcceptedResponse, DocumentMetadata, UploadJob
-from app.models.chat import Chat
+from app.modules.askai.models.document import ChatDocumentsResponse, ProcessingJob, ProcessingStage, ProcessingStatus, UploadAcceptedResponse, DocumentMetadata, UploadJob
+from app.modules.askai.models.chat import Chat
 from app.core.services import vector_store
 from app.core.global_stores import upload_jobs
 from app.db.mongo_client import get_database
@@ -23,7 +23,7 @@ async def upload_pdf(
     pdf: UploadFile = File(..., description="The PDF file to upload", alias="pdf")
 ):
     """Upload a PDF for RAG processing. This is an asynchronous operation."""
-    if not pdf.filename.lower().endswith(".pdf"):
+    if not (pdf.filename or "unknown").lower().endswith(".pdf"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a PDF")
 
     chat_doc = db["chats"].find_one({"_id": chat_id})
@@ -97,6 +97,7 @@ def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
 
     return {
         "pdfs": pdfs, "xlsx": excel, "processing": processing_jobs,
+        "drive_folders": [],
         "total_docs": len(pdfs) + len(excel) + len(processing_jobs),
         "chat_id": str(chat_id)
     }

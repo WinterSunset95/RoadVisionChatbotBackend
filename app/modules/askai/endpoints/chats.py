@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Body, status, Depends, BackgroundTasks
 from pymongo.database import Database
-from app.models.chat import ChatMetadata, Message, NewMessageRequest, NewMessageResponse, RenameChatRequest, CreateNewChatRequest
+from app.modules.askai.models.chat import ChatMetadata, Message, NewMessageRequest, NewMessageResponse, RenameChatRequest, CreateNewChatRequest
 from app.services import chat_service, rag_service
 from app.db.mongo_client import get_database
 

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.endpoints import health
+from app.modules.health import health
 from app.modules.askai.router import router as askai_router
 
 api_v1_router = APIRouter()
