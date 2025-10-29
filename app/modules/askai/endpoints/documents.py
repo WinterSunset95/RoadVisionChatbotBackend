@@ -3,7 +3,10 @@ import uuid
 import tempfile
 import os
 import stat
-from fastapi import APIRouter, HTTPException, Path, UploadFile, File, BackgroundTasks, status, Depends
+import asyncio
+import json
+from fastapi import APIRouter, HTTPException, Path, UploadFile, File, BackgroundTasks, status, Depends, Request
+from sse_starlette.sse import EventSourceResponse
 from pymongo.database import Database
 from app.modules.askai.models.document import AddDriveRequest, ChatDocumentsResponse, DriveFolder, ProcessingJob, ProcessingStage, ProcessingStatus, UploadAcceptedResponse, DocumentMetadata, UploadJob
 from app.modules.askai.models.chat import Chat
@@ -99,13 +102,12 @@ def get_upload_status(job_id: str = Path(..., description="The ID of the upload 
         raise HTTPException(status_code=404, detail="Job not found")
     return status
 
-@router.get("/chats/{chat_id}/docs", response_model=ChatDocumentsResponse, tags=["Documents"])
-def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
-    """Get all active and processing documents for a specific chat"""
+def _get_chat_docs_data(chat_id: uuid.UUID, db: Database) -> dict:
+    """Helper function to fetch and structure document data for a chat."""
     chat_doc = db["chats"].find_one({"_id": chat_id})
     if not chat_doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
-    
+
     chat = Chat.model_validate(chat_doc)
     
     pdfs = [DocumentMetadata(name=doc.filename, chunks=doc.chunks_count, status=doc.status) for doc in chat.documents if doc.doc_type == 'pdf']
@@ -113,16 +115,24 @@ def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
 
     processing_jobs: List[ProcessingJob] = []
     for jid, job in upload_jobs.items():
-        processing_job = ProcessingJob(name=job.filename, job_id=jid, status=job.status, stage=job.stage, progress=job.progress)
         if job.chat_id == str(chat_id):
+            processing_job = ProcessingJob(name=job.filename, job_id=jid, status=job.status, stage=job.stage, progress=job.progress)
             processing_jobs.append(processing_job)
+    
+    response_data = ChatDocumentsResponse(
+        pdfs=pdfs,
+        xlsx=excel,
+        processing=processing_jobs,
+        drive_folders=chat.drive_folders,
+        total_docs=len(pdfs) + len(excel) + len(processing_jobs),
+        chat_id=str(chat_id)
+    )
+    return response_data.model_dump()
 
-    return {
-        "pdfs": pdfs, "xlsx": excel, "processing": processing_jobs,
-        "drive_folders": chat.drive_folders,
-        "total_docs": len(pdfs) + len(excel) + len(processing_jobs),
-        "chat_id": str(chat_id)
-    }
+@router.get("/chats/{chat_id}/docs", response_model=ChatDocumentsResponse, tags=["Documents"])
+def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
+    """Get all active and processing documents for a specific chat"""
+    return _get_chat_docs_data(chat_id, db)
 
 @router.delete("/chats/{chat_id}/pdfs/{pdf_name}", tags=["Documents"])
 def delete_chat_pdf(chat_id: uuid.UUID, pdf_name: str, db: Database = Depends(get_database)):
