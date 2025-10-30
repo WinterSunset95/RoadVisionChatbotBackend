@@ -32,6 +32,14 @@ class Settings:
     MONGO_HOST: str = "localhost"  # Default for local scripts. Override with MONGO_HOST=db for Docker.
     MONGO_PORT: int = 27017
     MONGO_URL: str = "localhost"
+
+    # PostgreSQL
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "postgres"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/postgres"
     
     # Environment
     ENV: str = "development"
@@ -87,10 +95,23 @@ class Settings:
             f"mongodb://{self.MONGO_USER}:{self.MONGO_PASSWORD}"
             f"@{self.MONGO_HOST}:{self.MONGO_PORT}/?authSource=admin"
         )
+
+        # Load PostgreSQL settings
+        self.POSTGRES_USER = os.getenv("POSTGRES_USER", self.POSTGRES_USER)
+        self.POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
+        self.POSTGRES_DB = os.getenv("POSTGRES_DB", self.POSTGRES_DB)
+        self.POSTGRES_HOST = os.getenv("POSTGRES_HOST", self.POSTGRES_HOST)
+        self.POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", self.POSTGRES_PORT))
+
+        self.DATABASE_URL = (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        )
         
         print(f"✅ GOOGLE_API_KEY: configured")
         print(f"✅ LLAMA_CLOUD_API_KEY: {'configured' if self.LLAMA_CLOUD_API_KEY else 'not configured (optional)'}")
         print(f"✅ MongoDB: configured at {self.MONGO_HOST}:{self.MONGO_PORT}")
+        print(f"✅ PostgreSQL: configured at {self.POSTGRES_HOST}:{self.POSTGRES_PORT}")
 
 # Singleton instance
 settings = Settings()
