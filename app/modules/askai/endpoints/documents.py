@@ -14,7 +14,7 @@ from app.core.services import vector_store
 from app.core.global_stores import upload_jobs
 from app.db.database import get_db_session
 from app.config import settings
-from app.modules.askai.services import drive_service
+from app.modules.askai.services import drive_service, chat_service
 from app.modules.askai.services.document_processing_service import process_uploaded_pdf
 
 router = APIRouter()
