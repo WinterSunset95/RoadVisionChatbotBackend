@@ -62,3 +62,9 @@ class AuditLog(Base):
     status = Column(Enum('Success', 'Failed', 'Partial', name='audit_status_enum'))
     additional_data = Column(JSON)
 
+class TokenBlocklist(Base):
+    __tablename__ = "token_blocklist"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    jti = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
