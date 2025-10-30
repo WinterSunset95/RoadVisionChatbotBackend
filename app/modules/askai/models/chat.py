@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from pydantic import Field, BaseModel, ConfigDict
@@ -11,7 +12,7 @@ class Message(BaseModel):
     id: UUID
     text: str
     sender: str
-    timestamp: str
+    timestamp: datetime
 
 class ChatMetadata(BaseModel):
     """Model for the list of chats API response."""
