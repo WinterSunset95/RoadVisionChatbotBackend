@@ -5,13 +5,14 @@ from typing import List, Tuple, Dict
 
 import weaviate
 import weaviate.classes.config as wvc
+from weaviate.client import WeaviateClient
 from weaviate.collections.collection import Collection
 from app.config import settings
 
 class VectorStoreManager:
     """Manages Weaviate collections"""
     
-    def __init__(self, weaviate_client, embedding_model):
+    def __init__(self, weaviate_client: WeaviateClient, embedding_model):
         self.client = weaviate_client
         self.embedding_model = embedding_model
         print("✅ VectorStoreManager initialized")

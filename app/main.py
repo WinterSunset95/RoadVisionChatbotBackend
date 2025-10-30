@@ -43,8 +43,6 @@ def create_app() -> FastAPI:
         
         # Table creation is now managed by Alembic migrations.
         # The create_db_and_tables() function is no longer called on startup.
-
-        services.initialize_weaviate_client()
         
         print("--- Startup Complete ---")
 

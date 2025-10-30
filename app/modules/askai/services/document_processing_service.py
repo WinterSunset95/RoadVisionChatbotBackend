@@ -24,6 +24,9 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
     upload_job.stage = ProcessingStage.EXTRACTING_CONTENT
     upload_job.progress = 0
 
+    if not vector_store:
+        raise Exception("Vector store is not initialized.")
+
     db: Session = SessionLocal()
     try:
         chat_repo = ChatRepository(db)
