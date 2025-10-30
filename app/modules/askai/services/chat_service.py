@@ -1,94 +1,106 @@
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from fastapi import BackgroundTasks
-from pymongo.database import Database
+from sqlalchemy.orm import Session
 
 from app.core.services import vector_store
-from app.modules.askai.models.chat import Chat, ChatMetadata, Message, CreateNewChatRequest
+from app.modules.askai.models.chat import ChatMetadata, Message, CreateNewChatRequest, DocumentMetadata
+from app.modules.askai.db.repository import ChatRepository, DocumentRepository
 from app.modules.askai.services.drive_service import download_files_from_drive
-from app.utils import get_consistent_timestamp
 
-def get_all_chats(db: Database) -> List[ChatMetadata]:
-    """Get all chats from MongoDB, converting them to Pydantic models for the API response."""
-    chat_docs = list(db["chats"].find().sort("updated_at", -1))
+def get_all_chats(db: Session) -> List[ChatMetadata]:
+    """Get all chats from PostgreSQL."""
+    chat_repo = ChatRepository(db)
+    chats = chat_repo.get_all()
     response_chats = []
-    for chat_doc in chat_docs:
-        chat = Chat.model_validate(chat_doc)
+    for chat in chats:
         pdf_list = [
-            {
-                "name": doc.filename,
-                "upload_time": doc.uploaded_at,
-                "chunks_added": doc.chunks_count,
-                "status": doc.status,
-            }
-            for doc in chat.documents
+            DocumentMetadata(
+                name=doc.filename,
+                chunks=len(doc.chunks),
+                status=doc.status
+            ) for doc in chat.documents
         ]
         response_chats.append(
             ChatMetadata(
-                id=str(chat.id),
+                id=chat.id,
                 title=chat.title,
-                created_at=chat.created_at,
-                updated_at=chat.updated_at,
+                created_at=chat.created_at.isoformat(),
+                updated_at=chat.updated_at.isoformat(),
                 message_count=len(chat.messages),
-                has_pdf=len(chat.documents) > 0,
                 pdf_count=len(chat.documents),
                 pdf_list=pdf_list,
             )
         )
     return response_chats
 
-def create_new_chat(db: Database, payload: Optional[CreateNewChatRequest], background_tasks: BackgroundTasks) -> ChatMetadata:
-    """Create a new chat session in MongoDB."""
-    chat_count = db["chats"].count_documents({})
-    now = get_consistent_timestamp()
-    new_chat = Chat(
-        title=f"New Chat {chat_count + 1}",
-        created_at=now,
-        updated_at=now,
-    )
-    
-    db["chats"].insert_one(new_chat.model_dump(by_alias=True))
+def create_new_chat(db: Session, payload: Optional[CreateNewChatRequest], background_tasks: BackgroundTasks) -> ChatMetadata:
+    """Create a new chat session in PostgreSQL."""
+    chat_repo = ChatRepository(db)
+    chat_count = chat_repo.count()
+    new_chat = chat_repo.create(title=f"New Chat {chat_count + 1}")
 
     if payload and payload.driveUrl:
         background_tasks.add_task(download_files_from_drive, payload.driveUrl, str(new_chat.id))
-    
-    # Convert to API response model
+
     return ChatMetadata(
-        id=str(new_chat.id),
+        id=new_chat.id,
         title=new_chat.title,
-        created_at=new_chat.created_at,
-        updated_at=new_chat.updated_at,
+        created_at=new_chat.created_at.isoformat(),
+        updated_at=new_chat.updated_at.isoformat(),
         message_count=0,
-        has_pdf=False,
         pdf_count=0,
         pdf_list=[],
     )
 
-def get_chat_messages(db: Database, chat_id: UUID) -> List[Message]:
-    """Get all messages for a specific chat from MongoDB."""
-    chat_doc = db["chats"].find_one({"_id": chat_id})
-    if not chat_doc:
+def get_chat_messages(db: Session, chat_id: UUID) -> List[Message]:
+    """Get all messages for a specific chat from PostgreSQL."""
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
+    if not chat:
         return []
     
-    chat = Chat.model_validate(chat_doc)
-    return [
-        Message(id=str(msg.id), text=msg.text, sender=msg.sender, timestamp=msg.timestamp)
-        for msg in chat.messages
-    ]
+    return [Message.model_validate(msg) for msg in chat.messages]
 
-def delete_chat_by_id(db: Database, chat_id: UUID) -> bool:
-    """Delete a chat session and its associated data from MongoDB."""
-    result = db["chats"].delete_one({"_id": chat_id})
-    if result.deleted_count == 0:
+def delete_chat_by_id(db: Session, chat_id: UUID) -> bool:
+    """Delete a chat session and its associated data from PostgreSQL."""
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
+    if not chat:
         return False
     
+    chat_repo.delete(chat)
     vector_store.delete_collection(str(chat_id))
     return True
 
-def rename_chat_by_id(db: Database, chat_id: UUID, new_title: str) -> bool:
-    """Rename a chat session in MongoDB."""
-    result = db["chats"].update_one(
-        {"_id": chat_id},
-        {"$set": {"title": new_title, "updated_at": get_consistent_timestamp()}},
-    )
-    return result.modified_count > 0
+def rename_chat_by_id(db: Session, chat_id: UUID, new_title: str) -> bool:
+    """Rename a chat session in PostgreSQL."""
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
+    if not chat:
+        return False
+    
+    chat_repo.rename(chat, new_title)
+    return True
+
+def remove_document_from_chat(db: Session, chat_id: UUID, pdf_name: str) -> Tuple[bool, str]:
+    """Remove a document from a chat and handle cleanup."""
+    chat_repo = ChatRepository(db)
+    doc_repo = DocumentRepository(db)
+
+    chat = chat_repo.get_by_id(chat_id)
+    if not chat:
+        return False, "Chat not found"
+
+    doc_to_delete = doc_repo.find_by_filename_for_chat(chat_id, pdf_name)
+    if not doc_to_delete:
+        return False, f"PDF '{pdf_name}' not found in this chat"
+
+    doc_repo.remove_document_from_chat(chat, doc_to_delete)
+    
+    # After commit, the session is expired, so we need to check the updated state.
+    # A simple way is to check the length of the relationship.
+    if len(chat.documents) == 0:
+        vector_store.delete_collection(str(chat_id))
+    
+    return True, "PDF removed successfully"

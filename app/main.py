@@ -39,11 +39,10 @@ def create_app() -> FastAPI:
         print("--- Application Startup ---")
         
         # Initialize database clients within the startup event
-        from app.db.mongo_client import mongo_client
         from app.core import services
         
-        mongo_client.connect()
-        services.initialize_weaviate_client()
+        # Table creation is now managed by Alembic migrations.
+        # The create_db_and_tables() function is no longer called on startup.
         
         print("--- Startup Complete ---")
 
@@ -51,13 +50,9 @@ def create_app() -> FastAPI:
     async def shutdown_event():
         print("--- Application Shutdown ---")
         from app.core.services import weaviate_client
-        from app.db.mongo_client import mongo_client
         if weaviate_client:
             weaviate_client.close()
             print("Weaviate client closed.")
-        if mongo_client and mongo_client.client:
-            mongo_client.client.close()
-            print("MongoDB client closed.")
         print("--- Shutdown Complete ---")
 
     app.include_router(api_v1_router, prefix="/api/v1")

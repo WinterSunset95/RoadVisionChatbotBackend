@@ -11,12 +11,17 @@ import re
 import tempfile
 import uuid
 from typing import List
+import re
+import tempfile
+import uuid
+from typing import List
 from uuid import UUID
-from pymongo.database import Database
+from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.global_stores import upload_jobs
 from app.modules.askai.models.document import ProcessingJob, ProcessingStage, ProcessingStatus, UploadJob, DriveFile, DriveFolder
+from app.modules.askai.db.repository import ChatRepository
 from app.modules.askai.services.document_processing_service import process_uploaded_pdf
 
 
@@ -89,7 +94,7 @@ def _scan_folder_recursively(service, folder_id: str) -> DriveFolder:
         print(f"An error occurred while scanning folder {folder_id}: {error}")
         raise Exception(f"Failed to access Google Drive folder. Please check permissions and URL.") from error
 
-def add_drive_folder_to_chat(db: Database, chat_id: UUID, drive_url: str) -> DriveFolder:
+def add_drive_folder_to_chat(db: Session, chat_id: UUID, drive_url: str) -> DriveFolder:
     """Scans a Google Drive folder and adds its structure to a chat document."""
     service = authenticate_google_drive()
     if not service:
@@ -100,17 +105,19 @@ def add_drive_folder_to_chat(db: Database, chat_id: UUID, drive_url: str) -> Dri
         raise ValueError("Invalid Google Drive folder URL provided.")
     folder_id = match.group(1)
 
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
+    if not chat:
+        raise ValueError("Chat not found")
+
     # Check if this folder is already associated with the chat
-    chat_doc = db["chats"].find_one({"_id": chat_id, "drive_folders.id": folder_id})
-    if chat_doc:
+    if any(folder['id'] == folder_id for folder in chat.drive_folders):
         raise ValueError(f"Drive folder {folder_id} is already added to this chat.")
 
     folder_structure = _scan_folder_recursively(service, folder_id)
 
-    db["chats"].update_one(
-        {"_id": chat_id},
-        {"$push": {"drive_folders": folder_structure.model_dump()}}
-    )
+    chat_repo.add_drive_folder(chat, folder_structure.model_dump())
+    
     print(f"✅ Added Drive folder '{folder_id}' to chat '{chat_id}'")
     return folder_structure
 

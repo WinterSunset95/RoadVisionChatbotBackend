@@ -25,13 +25,13 @@ class Settings:
     GOOGLE_API_KEY: str = ""
     LLAMA_CLOUD_API_KEY: str = ""
     
-    # Database
-    MONGO_USER: str = "mongo"
-    MONGO_PASSWORD: str = "mongo"
-    MONGO_DB: str = "mongo"
-    MONGO_HOST: str = "localhost"  # Default for local scripts. Override with MONGO_HOST=db for Docker.
-    MONGO_PORT: int = 27017
-    MONGO_URL: str = "localhost"
+    # PostgreSQL
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "postgres"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/postgres"
     
     # Environment
     ENV: str = "development"
@@ -59,38 +59,21 @@ class Settings:
             raise Exception("❌ LLAMA_CLOUD_API_KEY not found in environment!")
         self.LLAMA_CLOUD_API_KEY = llama_api_key
         
-        mongo_root_user = os.getenv("MONGO_INITDB_ROOT_USERNAME")
-        if not mongo_root_user:
-            raise Exception("❌ MONGO_INITDB_ROOT_USERNAME not found in environment!")
-        self.MONGO_USER = mongo_root_user
+        # Load PostgreSQL settings
+        self.POSTGRES_USER = os.getenv("POSTGRES_USER", self.POSTGRES_USER)
+        self.POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
+        self.POSTGRES_DB = os.getenv("POSTGRES_DB", self.POSTGRES_DB)
+        self.POSTGRES_HOST = os.getenv("POSTGRES_HOST", self.POSTGRES_HOST)
+        self.POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", self.POSTGRES_PORT))
 
-        mongo_root_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
-        if not mongo_root_password:
-            raise Exception("❌ MONGO_INITDB_ROOT_PASSWORD not found in environment!")
-        self.MONGO_PASSWORD = mongo_root_password
-
-        mongo_database = os.getenv("MONGO_INITDB_DATABASE")
-        if not mongo_database:
-            raise Exception("❌ MONGO_INITDB_DATABASE not found in environment!")
-        self.MONGO_DB = mongo_database
-
-        self.MONGO_PORT = int(os.getenv("MONGO_PORT", 27017))
-        self.MONGO_HOST = os.getenv("MONGO_HOST", self.MONGO_HOST)
-
-        if not self.GOOGLE_API_KEY:
-            raise ValueError("❌ GOOGLE_API_KEY not found in environment!")
-        
-        if not all([self.MONGO_USER, self.MONGO_PASSWORD, self.MONGO_DB]):
-            raise ValueError("❌ Missing MongoDB connection details in environment!")
-
-        self.MONGO_URL = (
-            f"mongodb://{self.MONGO_USER}:{self.MONGO_PASSWORD}"
-            f"@{self.MONGO_HOST}:{self.MONGO_PORT}/?authSource=admin"
+        self.DATABASE_URL = (
+            f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
         
         print(f"✅ GOOGLE_API_KEY: configured")
         print(f"✅ LLAMA_CLOUD_API_KEY: {'configured' if self.LLAMA_CLOUD_API_KEY else 'not configured (optional)'}")
-        print(f"✅ MongoDB: configured at {self.MONGO_HOST}:{self.MONGO_PORT}")
+        print(f"✅ PostgreSQL: configured at {self.POSTGRES_HOST}:{self.POSTGRES_PORT}")
 
 # Singleton instance
 settings = Settings()

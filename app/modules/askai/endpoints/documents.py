@@ -7,14 +7,14 @@ import asyncio
 import json
 from fastapi import APIRouter, HTTPException, Path, UploadFile, File, BackgroundTasks, status, Depends, Request
 from sse_starlette.sse import EventSourceResponse
-from pymongo.database import Database
+from sqlalchemy.orm import Session
 from app.modules.askai.models.document import AddDriveRequest, ChatDocumentsResponse, DriveFolder, ProcessingJob, ProcessingStage, ProcessingStatus, UploadAcceptedResponse, DocumentMetadata, UploadJob
-from app.modules.askai.models.chat import Chat
+from app.modules.askai.db.models import Chat as SQLChat, Document as SQLDocument
 from app.core.services import vector_store
 from app.core.global_stores import upload_jobs
-from app.db.mongo_client import get_database
+from app.db.database import get_db_session
 from app.config import settings
-from app.modules.askai.services import drive_service
+from app.modules.askai.services import drive_service, chat_service
 from app.modules.askai.services.document_processing_service import process_uploaded_pdf
 
 router = APIRouter()
@@ -23,18 +23,16 @@ router = APIRouter()
 async def upload_pdf(
     chat_id: uuid.UUID,
     background_tasks: BackgroundTasks,
-    db: Database = Depends(get_database),
+    db: Session = Depends(get_db_session),
     pdf: UploadFile = File(..., description="The PDF file to upload", alias="pdf")
 ):
     """Upload a PDF for RAG processing. This is an asynchronous operation."""
     if not (pdf.filename or "unknown").lower().endswith(".pdf"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a PDF")
 
-    chat_doc = db["chats"].find_one({"_id": chat_id})
-    if not chat_doc:
+    chat = db.get(SQLChat, chat_id)
+    if not chat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
-    
-    chat = Chat.model_validate(chat_doc)
 
     if len(chat.documents) >= settings.MAX_PDFS_PER_CHAT:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Maximum {settings.MAX_PDFS_PER_CHAT} PDFs per chat")
@@ -77,14 +75,14 @@ async def upload_pdf(
 def add_drive_folder(
     chat_id: uuid.UUID,
     payload: AddDriveRequest,
-    db: Database = Depends(get_database)
+    db: Session = Depends(get_db_session)
 ):
     """
     Scans a public Google Drive folder and adds its file structure to the chat
     without downloading the files.
     """
-    chat_doc = db["chats"].find_one({"_id": chat_id})
-    if not chat_doc:
+    chat = db.get(SQLChat, chat_id)
+    if not chat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
     
     try:
@@ -102,16 +100,14 @@ def get_upload_status(job_id: str = Path(..., description="The ID of the upload 
         raise HTTPException(status_code=404, detail="Job not found")
     return status
 
-def _get_chat_docs_data(chat_id: uuid.UUID, db: Database) -> dict:
+def _get_chat_docs_data(chat_id: uuid.UUID, db: Session) -> dict:
     """Helper function to fetch and structure document data for a chat."""
-    chat_doc = db["chats"].find_one({"_id": chat_id})
-    if not chat_doc:
+    chat = db.get(SQLChat, chat_id)
+    if not chat:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
-
-    chat = Chat.model_validate(chat_doc)
     
-    pdfs = [DocumentMetadata(name=doc.filename, chunks=doc.chunks_count, status=doc.status) for doc in chat.documents if doc.doc_type == 'pdf']
-    excel = [DocumentMetadata(name=doc.filename, chunks=doc.chunks_count, status=doc.status) for doc in chat.documents if doc.doc_type == 'excel']
+    pdfs = [DocumentMetadata(name=doc.filename, chunks=len(doc.chunks), status=doc.status) for doc in chat.documents if doc.doc_type == 'pdf']
+    excel = [DocumentMetadata(name=doc.filename, chunks=len(doc.chunks), status=doc.status) for doc in chat.documents if doc.doc_type == 'excel']
 
     processing_jobs: List[ProcessingJob] = []
     for jid, job in upload_jobs.items():
@@ -130,7 +126,7 @@ def _get_chat_docs_data(chat_id: uuid.UUID, db: Database) -> dict:
     return response_data.model_dump()
 
 @router.get("/chats/{chat_id}/docs", response_model=ChatDocumentsResponse, tags=["Documents"])
-def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
+def get_chat_docs(chat_id: uuid.UUID, db: Session = Depends(get_db_session)):
     """Get all active and processing documents for a specific chat"""
     return _get_chat_docs_data(chat_id, db)
 
@@ -138,7 +134,7 @@ def get_chat_docs(chat_id: uuid.UUID, db: Database = Depends(get_database)):
 async def stream_chat_docs(
     chat_id: uuid.UUID,
     request: Request,
-    db: Database = Depends(get_database)
+    db: Session = Depends(get_db_session)
 ):
     """
     Streams document status for a chat using Server-Sent Events (SSE).
@@ -167,60 +163,44 @@ async def stream_chat_docs(
     return EventSourceResponse(event_generator())
 
 @router.delete("/chats/{chat_id}/pdfs/{pdf_name}", tags=["Documents"])
-def delete_chat_pdf(chat_id: uuid.UUID, pdf_name: str, db: Database = Depends(get_database)):
+def delete_chat_pdf(chat_id: uuid.UUID, pdf_name: str, db: Session = Depends(get_db_session)):
     """Delete a specific PDF from a chat"""
-    chat_doc = db["chats"].find_one({"_id": chat_id})
-    if not chat_doc:
-        raise HTTPException(status_code=404, detail="Chat not found")
-
-    doc_to_delete = next((doc for doc in chat_doc.get("documents", []) if doc["filename"] == pdf_name), None)
-    if not doc_to_delete:
-        raise HTTPException(status_code=404, detail=f"PDF '{pdf_name}' not found in this chat")
-
-    db["chats"].update_one(
-        {"_id": chat_id},
-        {"$pull": {"documents": {"filename": pdf_name}}}
-    )
-
-    # If this was the last document, delete the whole vector collection.
-    if len(chat_doc.get("documents", [])) == 1:
-        vector_store.delete_collection(str(chat_id))
+    success, message = chat_service.remove_document_from_chat(db, chat_id, pdf_name)
+    if not success:
+        # Use 404 for not found, which covers both chat and document cases
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     
-    # TODO: Implement granular vector deletion if needed.
-    
-    return {"message": "PDF removed successfully", "chat_id": str(chat_id), "pdf_name": pdf_name}
+    return {"message": message, "chat_id": str(chat_id), "pdf_name": pdf_name}
 
 # --- Compatibility Endpoints ---
 
 @router.get("/chats/{chat_id}/pdfs", tags=["Documents", "Compatibility"], summary="Get Chat PDFs (Legacy)")
-def get_chat_pdfs_legacy(chat_id: uuid.UUID, db: Database = Depends(get_database)):
+def get_chat_pdfs_legacy(chat_id: uuid.UUID, db: Session = Depends(get_db_session)):
     """(Legacy) Get PDF information for a chat."""
-    chat_doc = db["chats"].find_one({"_id": chat_id})
-    if not chat_doc:
+    chat = db.get(SQLChat, chat_id)
+    if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
-    
-    chat = Chat.model_validate(chat_doc)
+
     pdf_list_metadata = [
         {
             "name": doc.filename,
-            "chunks_added": doc.chunks_count,
+            "chunks_added": len(doc.chunks),
             "status": doc.status,
-            "upload_time": doc.uploaded_at
+            "upload_time": doc.uploaded_at.isoformat()
         } for doc in chat.documents
     ]
     return {"pdfs": pdf_list_metadata, "total_pdfs": len(pdf_list_metadata), "chat_id": str(chat_id)}
 
 @router.get("/pdfs", tags=["Documents", "Compatibility"], summary="Get All PDFs (Legacy)")
-def get_all_pdfs_legacy(db: Database = Depends(get_database)):
+def get_all_pdfs_legacy(db: Session = Depends(get_db_session)):
     """(Legacy) Get all PDFs across all chats."""
     all_pdfs = []
-    chat_docs = db["chats"].find()
-    for chat_doc in chat_docs:
-        chat = Chat.model_validate(chat_doc)
+    chats = db.query(SQLChat).all()
+    for chat in chats:
         for doc in chat.documents:
             all_pdfs.append({
                 "chat_id": str(chat.id), "chat_title": chat.title,
-                "name": doc.filename, "chunks": doc.chunks_count,
-                "status": doc.status, "uploaded_at": doc.uploaded_at
+                "name": doc.filename, "chunks": len(doc.chunks),
+                "status": doc.status, "uploaded_at": doc.uploaded_at.isoformat()
             })
     return {"pdfs": all_pdfs, "total_pdfs": len(all_pdfs)}

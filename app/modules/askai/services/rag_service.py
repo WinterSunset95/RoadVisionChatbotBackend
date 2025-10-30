@@ -1,27 +1,18 @@
 from uuid import UUID
 from typing import Dict, List
-from pymongo.database import Database
+from sqlalchemy.orm import Session
+from datetime import datetime
 
 from app.core.services import llm_model, vector_store
-from app.modules.askai.models.chat import Chat, EmbeddedMessage
+from app.modules.askai.db.repository import ChatRepository
 from app.config import settings
-from app.utils import get_consistent_timestamp
 
-def send_message_to_chat(db: Database, chat_id: UUID, user_message: str) -> Dict:
-    """
-    Handles the RAG pipeline for a user message.
-    1. Retrieves context from vector store.
-    2. Builds a prompt.
-    3. Calls the LLM.
-    4. Saves conversation history to DB.
-    5. Returns the response.
-    """
-    # Check if chat exists
-    chat_doc = db["chats"].find_one({"_id": chat_id})
-    if not chat_doc:
+def send_message_to_chat(db: Session, chat_id: UUID, user_message: str) -> Dict:
+    """Handles the RAG pipeline using PostgreSQL and Weaviate."""
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
+    if not chat:
         raise ValueError("Chat not found")
-    
-    chat = Chat.model_validate(chat_doc)
 
     # 1. Retrieve context
     chat_docs = chat.documents
@@ -78,7 +69,8 @@ that you are using information from other sources and not the context
         prompt = f"""You are a helpful AI assistant. Please answer: {user_message}"""
         
     # 3. Call LLM
-    recent_history = chat.messages[-10:]
+    is_first_message = len(chat.messages) == 0
+    recent_history = sorted(chat.messages, key=lambda m: m.timestamp, reverse=True)[:10]
     gemini_history = [{"role": "model" if msg.sender == "bot" else "user", "parts": [{"text": msg.text}]} for msg in recent_history]
     gemini_history.append({"role": "user", "parts": [{"text": prompt}]})
     
@@ -90,33 +82,23 @@ that you are using information from other sources and not the context
         bot_response = f"I encountered an error: {str(api_error)}"
 
     # 4. Save conversation to DB
-    now = get_consistent_timestamp()
-    user_msg_doc = EmbeddedMessage(sender="user", text=user_message, timestamp=now)
-    bot_msg_doc = EmbeddedMessage(sender="bot", text=bot_response, timestamp=now)
+    chat_repo.add_message(chat, sender="user", text=user_message)
+    chat_repo.add_message(chat, sender="bot", text=bot_response)
+    db.commit() # Commit transaction for both messages
+    db.refresh(chat)
     
-    db["chats"].update_one(
-        {"_id": chat_id},
-        {
-            "$push": {"messages": {"$each": [
-                user_msg_doc.model_dump(), 
-                bot_msg_doc.model_dump()
-            ]}},
-            "$set": {"updated_at": now}
-        }
-    )
-    
-    # Auto-generate a title if this is the first message from the user
-    if len(chat.messages) == 0:
+    # Auto-generate a title if this is the first user message
+    if is_first_message:
         try:
             title_prompt = f"Generate ONE short, concise title (4-5 words, NO extra text, straight to the title) for the following conversation: \n\nUser: {user_message}\n\nAssistant: {bot_response}"
             title_response = llm_model.generate_content(title_prompt)
             new_title = title_response.text.strip().replace('"', '')
             if new_title:
-                db["chats"].update_one({"_id": chat_id}, {"$set": {"title": new_title, "updated_at": now}})
+                chat_repo.rename(chat, new_title)
                 print(f"✅ Updated title to: {new_title}")
         except Exception as api_error:
             print(f"❌ Could not Auto-generate title for chat {chat_id}: {api_error}")
-    
+            
     # 5. Return response
-    message_count = len(chat.messages) + 2
+    message_count = len(chat.messages)
     return {"reply": bot_response, "sources": sources, "message_count": message_count}

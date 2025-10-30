@@ -1,34 +1,34 @@
 from uuid import UUID
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Body, status, Depends, BackgroundTasks
-from pymongo.database import Database
+from sqlalchemy.orm import Session
 from app.modules.askai.models.chat import ChatMetadata, Message, NewMessageRequest, NewMessageResponse, RenameChatRequest, CreateNewChatRequest
 from app.modules.askai.services import chat_service, rag_service
-from app.db.mongo_client import get_database
+from app.db.database import get_db_session
 
 router = APIRouter()
 
 @router.get("/chats", response_model=List[ChatMetadata], tags=["Chats"])
-def get_chats(db: Database = Depends(get_database)):
+def get_chats(db: Session = Depends(get_db_session)):
     """Get all chats, sorted by last updated"""
     return chat_service.get_all_chats(db)
 
 @router.post("/chats", response_model=ChatMetadata, status_code=status.HTTP_201_CREATED, tags=["Chats"])
 def create_chat(
         background_tasks: BackgroundTasks,
-        db: Database = Depends(get_database),
+        db: Session = Depends(get_db_session),
         payload: Optional[CreateNewChatRequest] = None,
     ):
     """Create a new chat session and start importing documents from Google Drive"""
     return chat_service.create_new_chat(db, payload, background_tasks)
 
 @router.get("/chats/{chat_id}", response_model=List[Message], tags=["Chats"])
-def get_chat(chat_id: UUID, db: Database = Depends(get_database)):
+def get_chat(chat_id: UUID, db: Session = Depends(get_db_session)):
     """Get all messages for a specific chat"""
     return chat_service.get_chat_messages(db, chat_id)
 
 @router.delete("/chats/{chat_id}", status_code=status.HTTP_200_OK, tags=["Chats"])
-def delete_chat(chat_id: UUID, db: Database = Depends(get_database)):
+def delete_chat(chat_id: UUID, db: Session = Depends(get_db_session)):
     """Delete a chat session and its associated data"""
     success = chat_service.delete_chat_by_id(db, chat_id)
     if not success:
@@ -39,7 +39,7 @@ def delete_chat(chat_id: UUID, db: Database = Depends(get_database)):
 def rename_chat(
     chat_id: UUID,
     payload: RenameChatRequest = Body(...),
-    db: Database = Depends(get_database)
+    db: Session = Depends(get_db_session)
 ):
     """Rename a chat session"""
     if not payload.title or not payload.title.strip():
@@ -54,7 +54,7 @@ def rename_chat(
 def send_message(
     chat_id: UUID,
     payload: NewMessageRequest = Body(...),
-    db: Database = Depends(get_database)
+    db: Session = Depends(get_db_session)
 ):
     """Send a message to a chat and get a RAG-based response"""
     if not payload.message or not payload.message.strip():

@@ -1,3 +1,4 @@
+from typing import Optional
 from google.generativeai.client import configure
 from google.generativeai.generative_models import GenerativeModel
 import tiktoken
@@ -5,6 +6,7 @@ import weaviate
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer
 from llama_parse import LlamaParse
+from weaviate.client import WeaviateClient
 
 from app.config import settings
 from app.modules.askai.models.document import UploadJob
@@ -22,24 +24,23 @@ try:
     print("✅ SentenceTransformer loaded")
 
     # This will be initialized in the startup event.
-    weaviate_client = None
+    weaviate_client: Optional[WeaviateClient] = None
+    vector_store: Optional[VectorStoreManager] = None
 
-    def initialize_weaviate_client():
-        global weaviate_client
-        try:
-            weaviate_client = weaviate.connect_to_local()
-            if not weaviate_client.is_ready():
-                raise Exception("Weaviate is not ready")
-            print("✅ Weaviate client connected")
-        except Exception as e:
-            print(f"❌ Could not connect to Weaviate: {e}")
-            weaviate_client = None
+    try:
+        weaviate_client = weaviate.connect_to_local()
+        if not weaviate_client.is_ready():
+            raise Exception("Weaviate is not ready")
+        print("✅ Weaviate client connected")
+        vector_store = VectorStoreManager(weaviate_client, embedding_model)
+    except Exception as e:
+        print(f"❌ Could not connect to Weaviate: {e}")
+        weaviate_client = None
     
     tokenizer = tiktoken.get_encoding("cl100k_base")
 
     pdf_processor = PDFProcessor(embedding_model, tokenizer)
     excel_processor = ExcelProcessor(embedding_model, tokenizer) 
-    vector_store = VectorStoreManager(weaviate_client, embedding_model)
     
     # This mimics the legacy global state for now. Will be replaced in Phase 3 with Redis.
     # active_conversations and document_store are now handled by the database.
