@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db_session
 from app.core.security import (create_access_token, create_refresh_token,
-                               get_current_active_user, decode_token)
+                               get_current_active_user, decode_token, oauth2_scheme)
 from app.config import settings
 from app.modules.auth.services import auth_service
 from app.modules.auth.db.repository import AuthRepository, TokenBlocklistRepository

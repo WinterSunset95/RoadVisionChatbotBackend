@@ -24,7 +24,6 @@ class User(UserBase):
     account_status: str
     is_active: bool
     model_config = ConfigDict(from_attributes=True)
-    is_active: bool
 
 # --- Token Schemas ---
 
