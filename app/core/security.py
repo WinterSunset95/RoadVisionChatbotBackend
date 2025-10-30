@@ -1,4 +1,3 @@
-import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
@@ -6,8 +5,10 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from app.config import settings
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing context. Argon2 is now the default.
+# It supports long passwords and is more secure than bcrypt.
+# bcrypt is kept for verifying any old passwords.
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 # --- Pydantic Model for Token Data ---
 
@@ -18,15 +19,11 @@ class TokenData(BaseModel):
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a plain password against a hashed one."""
-    # Pre-hash the plain password with SHA-256 before verification.
-    password_hash = hashlib.sha256(plain_password.encode()).hexdigest()
-    return pwd_context.verify(password_hash, hashed_password)
+    return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """Hashes a plain password."""
-    # Pre-hash the password with SHA-256 to bypass bcrypt's 72-byte limit.
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    return pwd_context.hash(password_hash)
+    return pwd_context.hash(password)
 
 # --- JWT Token Functions ---
 
