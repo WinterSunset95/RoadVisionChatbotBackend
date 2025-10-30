@@ -41,10 +41,9 @@ def create_app() -> FastAPI:
         # Initialize database clients within the startup event
         from app.db.mongo_client import mongo_client
         from app.core import services
-        from app.db.database import create_db_and_tables
         
-        # Create PostgreSQL tables
-        create_db_and_tables()
+        # Table creation is now managed by Alembic migrations.
+        # The create_db_and_tables() function is no longer called on startup.
 
         mongo_client.connect()
         services.initialize_weaviate_client()

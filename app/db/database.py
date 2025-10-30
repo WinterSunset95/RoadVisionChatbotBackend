@@ -23,3 +23,11 @@ def create_db_and_tables():
     print("Creating database tables...")
     Base.metadata.create_all(bind=engine)
     print("Database tables created.")
+
+# FastAPI dependency to get a DB session for a single request
+def get_db_session():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
