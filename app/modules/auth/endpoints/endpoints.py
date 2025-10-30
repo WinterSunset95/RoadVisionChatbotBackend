@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db_session
 from app.core.security import create_access_token
 from app.config import settings
-from .. import services
-from ..db.repository import AuthRepository
-from ..models.pydantic_models import User, UserCreate, Token
+from app.modules.auth.services import auth_service
+from app.modules.auth.db.repository import AuthRepository
+from app.modules.auth.models.pydantic_models import User, UserCreate, Token
 
 router = APIRouter()
 
@@ -21,8 +21,8 @@ def login_for_access_token(
     Authenticates a user and returns a JWT token.
     Corresponds to /api/auth/login from PRD.
     """
-    user = services.authenticate_user(db, email=form_data.username, password=form_data.password)
-    if not user or not user.is_active:
+    user = auth_service.authenticate_user(db, email=form_data.username, password=form_data.password)
+    if not user or not bool(user.is_active):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password, or inactive account",
@@ -46,6 +46,6 @@ def register_user(user: UserCreate, db: Session = Depends(get_db_session)):
         raise HTTPException(status_code=400, detail="Email already registered")
     
     try:
-        return services.create_user(db=db, user=user)
+        return auth_service.create_user(db=db, user=user)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -23,6 +23,7 @@ class User(UserBase):
     role: str
     account_status: str
     model_config = ConfigDict(from_attributes=True)
+    is_active: bool
 
 # --- Token Schemas ---
 
