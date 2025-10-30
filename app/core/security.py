@@ -4,10 +4,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from app.config import settings
-import hashlib
 
 # Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# The truncate option tells bcrypt to handle passwords longer than 72 bytes.
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__truncate=72)
 
 # --- Pydantic Model for Token Data ---
 
@@ -18,13 +18,11 @@ class TokenData(BaseModel):
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a plain password against a hashed one."""
-    password_hash = hashlib.sha256(plain_password.encode()).hexdigest()
-    return pwd_context.verify(password_hash, hashed_password)
+    return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """Hashes a plain password."""
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    return pwd_context.hash(password_hash)
+    return pwd_context.hash(password)
 
 # --- JWT Token Functions ---
 
