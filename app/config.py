@@ -32,6 +32,11 @@ class Settings:
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/postgres"
+
+    # Security
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_SECRET_KEY: str = "secret"
+    ALGORITHM: str = "HS256"
     
     # Environment
     ENV: str = "development"
@@ -74,6 +79,11 @@ class Settings:
         print(f"✅ GOOGLE_API_KEY: configured")
         print(f"✅ LLAMA_CLOUD_API_KEY: {'configured' if self.LLAMA_CLOUD_API_KEY else 'not configured (optional)'}")
         print(f"✅ PostgreSQL: configured at {self.POSTGRES_HOST}:{self.POSTGRES_PORT}")
+
+        # Load security settings
+        self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", self.JWT_SECRET_KEY)
+        self.ALGORITHM = os.getenv("JWT_ALGORITHM", self.ALGORITHM)
+        self.ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", self.ACCESS_TOKEN_EXPIRE_MINUTES))
 
 # Singleton instance
 settings = Settings()
