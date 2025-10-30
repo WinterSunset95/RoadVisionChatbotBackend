@@ -1,31 +1,12 @@
 from typing import List, Optional
-from uuid import UUID, uuid4
-from pydantic import Field, BaseModel
-from app.db.base import MongoDBModel
-from .document import EmbeddedDocument, DriveFolder
+from uuid import UUID
+from pydantic import Field, BaseModel, ConfigDict
+from .document import DriveFolder, DocumentMetadata
 
-# --- Models for data stored in MongoDB ---
-
-class EmbeddedMessage(MongoDBModel):
-    """Represents a message embedded in a Chat document."""
-    id: UUID = Field(default_factory=uuid4)
-    sender: str  # 'user' or 'bot'
-    text: str
-    timestamp: str
-
-class Chat(MongoDBModel):
-    """The main Chat document model for MongoDB."""
-    id: UUID = Field(default_factory=uuid4, alias="_id")
-    title: str
-    created_at: str
-    updated_at: str
-    documents: List[EmbeddedDocument] = []
-    drive_folders: List[DriveFolder] = []
-    messages: List[EmbeddedMessage] = []
-
-# --- Models for API Request/Response (for backward compatibility) ---
+# --- API Models ---
 
 class Message(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     """Model for API responses for a single chat's messages."""
     id: str
     text: str
@@ -34,14 +15,14 @@ class Message(BaseModel):
 
 class ChatMetadata(BaseModel):
     """Model for the list of chats API response."""
-    id: str
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
     title: str
     created_at: str
     updated_at: str
     message_count: int
-    has_pdf: bool
     pdf_count: int
-    pdf_list: List[dict] = []
+    pdf_list: List[DocumentMetadata] = []
 
 class NewMessageRequest(BaseModel):
     message: str

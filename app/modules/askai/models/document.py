@@ -5,21 +5,6 @@ from pydantic import Field, BaseModel, ConfigDict
 from app.db.base import MongoDBModel
 
 
-class EmbeddedDocument(MongoDBModel):
-    """
-    Represents a document embedded within a Chat document in MongoDB.
-    """
-    id: UUID = Field(default_factory=uuid4)
-    filename: str
-    doc_type: str = "pdf"
-    file_hash: str
-    file_size: int
-    chunks_count: int
-    status: str = "active"
-    uploaded_at: str
-    processing_stats: Optional[dict[str, Any]] = None
-
-
 class DocumentMetadata(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     name: str
