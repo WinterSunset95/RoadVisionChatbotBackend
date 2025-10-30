@@ -81,15 +81,9 @@ class Settings:
         print(f"✅ PostgreSQL: configured at {self.POSTGRES_HOST}:{self.POSTGRES_PORT}")
 
         # Load security settings
-        jwt_secret_key = os.getenv("JWT_SECRET_KEY")
-        if not jwt_secret_key:
-            raise Exception("❌ JWT_SECRET_KEY not found in environment!")
-        self.JWT_SECRET_KEY = jwt_secret_key
-
-        algorithm = os.getenv("JWT_ALGORITHM")
-        if not algorithm:
-            raise Exception("❌ JWT_ALGORITHM not found in environment!")
-        self.ALGORITHM = algorithm
+        self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", self.JWT_SECRET_KEY)
+        self.ALGORITHM = os.getenv("ALGORITHM", self.ALGORITHM)
+        self.ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", self.ACCESS_TOKEN_EXPIRE_MINUTES))
 
 # Singleton instance
 settings = Settings()

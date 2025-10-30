@@ -31,6 +31,3 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
-class TokenData(BaseModel):
-    """Pydantic model for data encoded in a JWT."""
-    email: Optional[str] = None
