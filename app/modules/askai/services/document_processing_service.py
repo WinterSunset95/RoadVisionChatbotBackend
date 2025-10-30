@@ -62,8 +62,7 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
             chunks=[
                 DocumentChunk(
                     content=chunk["content"],
-                    chunk_metadata=chunk["metadata"],
-                    embedding=[]  # Embedding is stored in Weaviate, not PG for now
+                    chunk_metadata=chunk["metadata"]
                 ) for chunk in chunks_as_dicts
             ]
         )

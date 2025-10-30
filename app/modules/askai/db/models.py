@@ -2,7 +2,6 @@ import uuid
 from sqlalchemy import Column, String, DateTime, ForeignKey, Text, JSON, Table, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from pgvector.sqlalchemy import Vector
 
 from app.db.database import Base
 from app.config import settings
@@ -53,8 +52,6 @@ class DocumentChunk(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     document_id = Column(UUID(as_uuid=True), ForeignKey('documents.id'), nullable=False)
     content = Column(Text, nullable=False)
-    # The dimension of the vector depends on the embedding model. all-MiniLM-L6-v2 is 384.
-    embedding = Column(Vector(384))
     chunk_metadata = Column(JSON)
     
     document = relationship("Document", back_populates="chunks")
