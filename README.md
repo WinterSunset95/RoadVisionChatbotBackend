@@ -52,11 +52,13 @@ python app.py
 
 1. The following environment variables are required:
     - `GOOGLE_API_KEY`
+    - `GOOGLE_APIKEY`
     - `LLAMA_CLOUD_API_KEY`
-    - `MONGO_INITDB_ROOT_USERNAME`
-    - `MONGO_INITDB_ROOT_PASSWORD`
-    - `MONGO_INITDB_DATABASE`
-    - `MONGO_HOST`
+    - `POSTGRES_USER`
+    - `POSTGRES_PASSWORD`
+    - `POSTGRES_DB`
+    - `WEAVIATE_URL`
+    - `WEAVIATE_API_KEY`
 
 2. The following credential files are required:
     - `credentials.json`: Google Drive API credentials
@@ -64,3 +66,28 @@ python app.py
 
 *Note: The application will absolutely NOT work without the above environment variables and credential files.*
 *Please ask the developer for the files*
+
+## Project structure
+### Root level `app/`
+- `app/main.py`: The main entry point for the FastAPI application.
+- `app/config.py`: Application configuration.
+- `app/utils.py`: Utility functions for the application.
+
+### `app/api/`
+- `v1/`: Aggregates all module level endpoints.
+
+### Shared services and stores `app/core/`
+
+### Database connection handler `app/db/`
+
+### Modules `app/modules/[module_name]/`
+This project will be split into multiple modules as the project grows. Each module will have the following
+structure:
+
+- `db/`: Module specific database models and repositories.
+- `endpoints/`: Module specific API endpoints.
+- `services/`: Module specific services and business logic.
+- `models/`: Pydantic models for req-res
+- `router.py`: Aggregates module endpoints and routes.
+
+
