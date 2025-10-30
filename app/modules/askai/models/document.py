@@ -2,7 +2,6 @@ from enum import Enum
 from typing import List, Optional, Any
 from uuid import UUID, uuid4
 from pydantic import Field, BaseModel, ConfigDict
-from app.db.base import MongoDBModel
 
 
 class DocumentMetadata(BaseModel):

@@ -8,7 +8,7 @@ from .document import DriveFolder, DocumentMetadata
 class Message(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     """Model for API responses for a single chat's messages."""
-    id: str
+    id: UUID
     text: str
     sender: str
     timestamp: str
