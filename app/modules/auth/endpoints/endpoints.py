@@ -26,7 +26,7 @@ def login_for_access_token(
     Corresponds to /api/auth/login from PRD.
     """
     user = auth_service.authenticate_user(db, email=form_data.username, password=form_data.password)
-    if not user or not bool(user.is_active):
+    if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password, or inactive account",
