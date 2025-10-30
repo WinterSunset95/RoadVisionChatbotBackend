@@ -19,6 +19,7 @@ class Chat(Base):
     title = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=False)
+    drive_folders = Column(JSON, default=[])
     
     messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan")
     documents = relationship("Document", secondary=chat_document_association, back_populates="chats")
