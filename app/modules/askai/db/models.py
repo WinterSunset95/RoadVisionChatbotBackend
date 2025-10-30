@@ -54,6 +54,6 @@ class DocumentChunk(Base):
     content = Column(Text, nullable=False)
     # The dimension of the vector depends on the embedding model. all-MiniLM-L6-v2 is 384.
     embedding = Column(Vector(384))
-    metadata = Column(JSON)
+    chunk_metadata = Column(JSON)
     
     document = relationship("Document", back_populates="chunks")
