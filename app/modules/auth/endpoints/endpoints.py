@@ -95,12 +95,12 @@ def logout(
             blocklist_repo.add_to_blocklist(jti)
     return {"message": "Successfully logged out"}
 
-@router.get("/users/me", response_model=User, tags=["Users"])
+@router.get("/users/me", response_model=User, tags=["Authentication - Users"])
 def read_users_me(current_user: SQLUser = Depends(get_current_active_user)):
     """Gets the profile of the currently authenticated user."""
     return current_user
 
-@router.put("/users/me", response_model=User, tags=["Users"])
+@router.put("/users/me", response_model=User, tags=["Authentication - Users"])
 def update_users_me(
     user_update: UserProfileUpdate,
     db: Session = Depends(get_db_session),

@@ -10,7 +10,7 @@ api_v1_router.include_router(health.router)
 
 # Feature module routers
 api_v1_router.include_router(auth_router, prefix="/auth")
-api_v1_router.include_router(askai_router, prefix="/askai", tags=["AskAI"])
+api_v1_router.include_router(askai_router, prefix="/askai")
 
 # In the future, you can add other module routers here:
 # from app.modules.dashboard.router import router as dashboard_router

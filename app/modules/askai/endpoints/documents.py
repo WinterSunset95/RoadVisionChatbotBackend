@@ -19,7 +19,7 @@ from app.modules.askai.services.document_processing_service import process_uploa
 
 router = APIRouter()
 
-@router.post("/chats/{chat_id}/upload-pdf", response_model=UploadAcceptedResponse, status_code=status.HTTP_202_ACCEPTED, tags=["Documents"])
+@router.post("/chats/{chat_id}/upload-pdf", response_model=UploadAcceptedResponse, status_code=status.HTTP_202_ACCEPTED, tags=["AskAI - Documents"])
 async def upload_pdf(
     chat_id: uuid.UUID,
     background_tasks: BackgroundTasks,
@@ -71,7 +71,7 @@ async def upload_pdf(
 
     return {"message": "Upload accepted", "job_id": job_id, "processing": True}
 
-@router.post("/chats/{chat_id}/add-drive", response_model=DriveFolder, tags=["Documents"])
+@router.post("/chats/{chat_id}/add-drive", response_model=DriveFolder, tags=["AskAI - Documents"])
 def add_drive_folder(
     chat_id: uuid.UUID,
     payload: AddDriveRequest,
@@ -92,7 +92,7 @@ def add_drive_folder(
         # Catches invalid URLs from service logic and other potential errors.
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.get("/upload-status/{job_id}", tags=["Documents"])
+@router.get("/upload-status/{job_id}", tags=["AskAI - Documents"])
 def get_upload_status(job_id: str = Path(..., description="The ID of the upload job")):
     """Get the status of an asynchronous upload job"""
     status = upload_jobs.get(job_id)
@@ -125,12 +125,12 @@ def _get_chat_docs_data(chat_id: uuid.UUID, db: Session) -> dict:
     )
     return response_data.model_dump()
 
-@router.get("/chats/{chat_id}/docs", response_model=ChatDocumentsResponse, tags=["Documents"])
+@router.get("/chats/{chat_id}/docs", response_model=ChatDocumentsResponse, tags=["AskAI - Documents"])
 def get_chat_docs(chat_id: uuid.UUID, db: Session = Depends(get_db_session)):
     """Get all active and processing documents for a specific chat"""
     return _get_chat_docs_data(chat_id, db)
 
-@router.get("/chats/{chat_id}/docs-sse", tags=["Documents"])
+@router.get("/chats/{chat_id}/docs-sse", tags=["AskAI - Documents"])
 async def stream_chat_docs(
     chat_id: uuid.UUID,
     request: Request,
@@ -162,7 +162,7 @@ async def stream_chat_docs(
             
     return EventSourceResponse(event_generator())
 
-@router.delete("/chats/{chat_id}/pdfs/{pdf_name}", tags=["Documents"])
+@router.delete("/chats/{chat_id}/pdfs/{pdf_name}", tags=["AskAI - Documents"])
 def delete_chat_pdf(chat_id: uuid.UUID, pdf_name: str, db: Session = Depends(get_db_session)):
     """Delete a specific PDF from a chat"""
     success, message = chat_service.remove_document_from_chat(db, chat_id, pdf_name)
@@ -171,36 +171,3 @@ def delete_chat_pdf(chat_id: uuid.UUID, pdf_name: str, db: Session = Depends(get
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     
     return {"message": message, "chat_id": str(chat_id), "pdf_name": pdf_name}
-
-# --- Compatibility Endpoints ---
-
-@router.get("/chats/{chat_id}/pdfs", tags=["Documents", "Compatibility"], summary="Get Chat PDFs (Legacy)")
-def get_chat_pdfs_legacy(chat_id: uuid.UUID, db: Session = Depends(get_db_session)):
-    """(Legacy) Get PDF information for a chat."""
-    chat = db.get(SQLChat, chat_id)
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-
-    pdf_list_metadata = [
-        {
-            "name": doc.filename,
-            "chunks_added": len(doc.chunks),
-            "status": doc.status,
-            "upload_time": doc.uploaded_at.isoformat()
-        } for doc in chat.documents
-    ]
-    return {"pdfs": pdf_list_metadata, "total_pdfs": len(pdf_list_metadata), "chat_id": str(chat_id)}
-
-@router.get("/pdfs", tags=["Documents", "Compatibility"], summary="Get All PDFs (Legacy)")
-def get_all_pdfs_legacy(db: Session = Depends(get_db_session)):
-    """(Legacy) Get all PDFs across all chats."""
-    all_pdfs = []
-    chats = db.query(SQLChat).all()
-    for chat in chats:
-        for doc in chat.documents:
-            all_pdfs.append({
-                "chat_id": str(chat.id), "chat_title": chat.title,
-                "name": doc.filename, "chunks": len(doc.chunks),
-                "status": doc.status, "uploaded_at": doc.uploaded_at.isoformat()
-            })
-    return {"pdfs": all_pdfs, "total_pdfs": len(all_pdfs)}

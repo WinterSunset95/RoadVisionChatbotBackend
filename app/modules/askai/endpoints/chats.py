@@ -8,12 +8,12 @@ from app.db.database import get_db_session
 
 router = APIRouter()
 
-@router.get("/chats", response_model=List[ChatMetadata], tags=["Chats"])
+@router.get("/chats", response_model=List[ChatMetadata], tags=["AskAI - Chats"])
 def get_chats(db: Session = Depends(get_db_session)):
     """Get all chats, sorted by last updated"""
     return chat_service.get_all_chats(db)
 
-@router.post("/chats", response_model=ChatMetadata, status_code=status.HTTP_201_CREATED, tags=["Chats"])
+@router.post("/chats", response_model=ChatMetadata, status_code=status.HTTP_201_CREATED, tags=["AskAI - Chats"])
 def create_chat(
         background_tasks: BackgroundTasks,
         db: Session = Depends(get_db_session),
@@ -22,12 +22,12 @@ def create_chat(
     """Create a new chat session and start importing documents from Google Drive"""
     return chat_service.create_new_chat(db, payload, background_tasks)
 
-@router.get("/chats/{chat_id}", response_model=List[Message], tags=["Chats"])
+@router.get("/chats/{chat_id}", response_model=List[Message], tags=["AskAI - Chats"])
 def get_chat(chat_id: UUID, db: Session = Depends(get_db_session)):
     """Get all messages for a specific chat"""
     return chat_service.get_chat_messages(db, chat_id)
 
-@router.delete("/chats/{chat_id}", status_code=status.HTTP_200_OK, tags=["Chats"])
+@router.delete("/chats/{chat_id}", status_code=status.HTTP_200_OK, tags=["AskAI - Chats"])
 def delete_chat(chat_id: UUID, db: Session = Depends(get_db_session)):
     """Delete a chat session and its associated data"""
     success = chat_service.delete_chat_by_id(db, chat_id)
@@ -35,7 +35,7 @@ def delete_chat(chat_id: UUID, db: Session = Depends(get_db_session)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
     return {"message": "Chat deleted successfully"}
 
-@router.put("/chats/{chat_id}/rename", status_code=status.HTTP_200_OK, tags=["Chats"])
+@router.put("/chats/{chat_id}/rename", status_code=status.HTTP_200_OK, tags=["AskAI - Chats"])
 def rename_chat(
     chat_id: UUID,
     payload: RenameChatRequest = Body(...),
@@ -50,7 +50,7 @@ def rename_chat(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found")
     return {"message": "Chat renamed successfully"}
 
-@router.post("/chats/{chat_id}/messages", response_model=NewMessageResponse, tags=["Chats"])
+@router.post("/chats/{chat_id}/messages", response_model=NewMessageResponse, tags=["AskAI - Chats"])
 def send_message(
     chat_id: UUID,
     payload: NewMessageRequest = Body(...),
