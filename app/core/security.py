@@ -1,3 +1,4 @@
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
@@ -6,8 +7,7 @@ from pydantic import BaseModel
 from app.config import settings
 
 # Password hashing context
-# The truncate option tells bcrypt to handle passwords longer than 72 bytes.
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__truncate=72)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # --- Pydantic Model for Token Data ---
 
@@ -18,11 +18,15 @@ class TokenData(BaseModel):
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a plain password against a hashed one."""
-    return pwd_context.verify(plain_password, hashed_password)
+    # Pre-hash the plain password with SHA-256 before verification.
+    password_hash = hashlib.sha256(plain_password.encode()).hexdigest()
+    return pwd_context.verify(password_hash, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """Hashes a plain password."""
-    return pwd_context.hash(password)
+    # Pre-hash the password with SHA-256 to bypass bcrypt's 72-byte limit.
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    return pwd_context.hash(password_hash)
 
 # --- JWT Token Functions ---
 
