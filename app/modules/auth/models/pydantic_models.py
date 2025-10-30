@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 import uuid
 
@@ -7,9 +7,11 @@ import uuid
 class UserBase(BaseModel):
     """Base Pydantic model for User."""
     email: EmailStr
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    department: Optional[str] = None
+    full_name: str
+    employee_id: str
+    mobile_number: str
+    designation: str
+    department: str
 
 class UserCreate(UserBase):
     """Pydantic model for creating a new user."""
@@ -19,10 +21,8 @@ class User(UserBase):
     """Pydantic model for returning a user (response)."""
     id: uuid.UUID
     role: str
-    is_active: bool
-
-    class Config:
-        from_attributes = True # Replaces orm_mode = True
+    account_status: str
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Token Schemas ---
 
@@ -30,3 +30,7 @@ class Token(BaseModel):
     """Pydantic model for the JWT token response."""
     access_token: str
     token_type: str = "bearer"
+
+class TokenData(BaseModel):
+    """Pydantic model for data encoded in a JWT."""
+    email: Optional[str] = None
