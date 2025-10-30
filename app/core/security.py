@@ -4,6 +4,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from app.config import settings
+import hashlib
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -17,11 +18,13 @@ class TokenData(BaseModel):
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a plain password against a hashed one."""
-    return pwd_context.verify(plain_password, hashed_password)
+    password_hash = hashlib.sha256(plain_password.encode()).hexdigest()
+    return pwd_context.verify(password_hash, hashed_password)
 
 def get_password_hash(password: str) -> str:
     """Hashes a plain password."""
-    return pwd_context.hash(password)
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    return pwd_context.hash(password_hash)
 
 # --- JWT Token Functions ---
 
