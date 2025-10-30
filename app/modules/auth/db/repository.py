@@ -3,7 +3,7 @@ from typing import Optional
 
 from .schema import User, TokenBlocklist
 from ..models.pydantic_models import UserCreate, UserProfileUpdate
-from app.core.security import get_password_hash
+from ..security import get_password_hash
 
 class AuthRepository:
     def __init__(self, db: Session):

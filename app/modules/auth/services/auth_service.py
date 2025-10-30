@@ -3,7 +3,7 @@ from typing import Optional
 
 from ..db.schema import User
 from ..db.repository import AuthRepository
-from app.core.security import verify_password
+from ..security import verify_password
 from ..models.pydantic_models import UserCreate
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
