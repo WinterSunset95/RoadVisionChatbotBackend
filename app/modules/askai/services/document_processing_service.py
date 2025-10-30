@@ -4,12 +4,12 @@ import traceback
 from datetime import datetime
 
 from sqlalchemy.orm import Session
-from langchain_core.documents import Document as LangChainDocument
 
 from app.core.services import pdf_processor, vector_store
 from app.core.global_stores import upload_jobs
 from app.db.database import SessionLocal
-from app.modules.askai.db.models import Document as SQLDocument, Chat as SQLChat, DocumentChunk
+from app.modules.askai.db.models import Document as SQLDocument, DocumentChunk
+from app.modules.askai.db.repository import ChatRepository, DocumentRepository
 from app.modules.askai.models.document import ProcessingStage, ProcessingStatus, UploadJob
 from app.utils import get_file_hash
 from app.config import settings
@@ -26,16 +26,18 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
 
     db: Session = SessionLocal()
     try:
+        chat_repo = ChatRepository(db)
+        doc_repo = DocumentRepository(db)
         chat_id = UUID(chat_id_str)
-        chat = db.get(SQLChat, chat_id)
+        chat = chat_repo.get_by_id(chat_id)
         if not chat:
             raise Exception(f"Chat {chat_id} not found in database.")
 
-        # 1. Process PDF to get LangChain Documents and stats
+        # 1. Process PDF to get chunks and stats
         doc_id = uuid4()
-        chunks, stats = pdf_processor.process_pdf(job_id, temp_path, str(doc_id), filename)
+        chunks_as_dicts, stats = pdf_processor.process_pdf(job_id, temp_path, str(doc_id), filename)
         
-        if not chunks:
+        if not chunks_as_dicts:
             raise Exception("No content extracted from PDF")
 
         upload_job.stage = ProcessingStage.ADDING_TO_VECTOR_STORE
@@ -43,8 +45,7 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
         
         # 2. Add chunks to vector store
         collection = vector_store.get_or_create_collection(chat_id_str)
-        chunks_for_store = [{"content": doc.page_content, "metadata": doc.metadata} for doc in chunks]
-        added_count = vector_store.add_chunks(collection, chunks_for_store)
+        added_count = vector_store.add_chunks(collection, chunks_as_dicts)
         
         upload_job.stage = ProcessingStage.SAVING_METADATA
         upload_job.progress = 0
@@ -60,15 +61,13 @@ def process_uploaded_pdf(temp_path: str, chat_id_str: str, filename: str, job_id
             processing_stats=stats,
             chunks=[
                 DocumentChunk(
-                    content=doc.page_content,
-                    chunk_metadata=doc.metadata,
+                    content=chunk["content"],
+                    chunk_metadata=chunk["metadata"],
                     embedding=[]  # Embedding is stored in Weaviate, not PG for now
-                ) for doc in chunks
+                ) for chunk in chunks_as_dicts
             ]
         )
-        chat.documents.append(new_document)
-        chat.updated_at = now
-        db.commit()
+        doc_repo.add_document_to_chat(chat, new_document)
         
         # 4. Update job status to 'done'
         upload_job.status = ProcessingStatus.FINISHED

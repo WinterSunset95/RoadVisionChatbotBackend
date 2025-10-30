@@ -4,12 +4,13 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.core.services import llm_model, vector_store
-from app.modules.askai.db.models import Chat as SQLChat, Message as SQLMessage
+from app.modules.askai.db.repository import ChatRepository
 from app.config import settings
 
 def send_message_to_chat(db: Session, chat_id: UUID, user_message: str) -> Dict:
     """Handles the RAG pipeline using PostgreSQL and Weaviate."""
-    chat = db.get(SQLChat, chat_id)
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
     if not chat:
         raise ValueError("Chat not found")
 
@@ -68,7 +69,7 @@ that you are using information from other sources and not the context
         prompt = f"""You are a helpful AI assistant. Please answer: {user_message}"""
         
     # 3. Call LLM
-    # Query last 10 messages, ordered by timestamp
+    is_first_message = len(chat.messages) == 0
     recent_history = sorted(chat.messages, key=lambda m: m.timestamp, reverse=True)[:10]
     gemini_history = [{"role": "model" if msg.sender == "bot" else "user", "parts": [{"text": msg.text}]} for msg in recent_history]
     gemini_history.append({"role": "user", "parts": [{"text": prompt}]})
@@ -81,27 +82,23 @@ that you are using information from other sources and not the context
         bot_response = f"I encountered an error: {str(api_error)}"
 
     # 4. Save conversation to DB
-    now = datetime.now()
-    user_msg = SQLMessage(chat_id=chat_id, sender="user", text=user_message, timestamp=now)
-    bot_msg = SQLMessage(chat_id=chat_id, sender="bot", text=bot_response, timestamp=now)
-    db.add_all([user_msg, bot_msg])
-    
-    chat.updated_at = now
+    chat_repo.add_message(chat, sender="user", text=user_message)
+    chat_repo.add_message(chat, sender="bot", text=bot_response)
+    db.commit() # Commit transaction for both messages
+    db.refresh(chat)
     
     # Auto-generate a title if this is the first user message
-    if len(chat.messages) == 0:
+    if is_first_message:
         try:
             title_prompt = f"Generate ONE short, concise title (4-5 words, NO extra text, straight to the title) for the following conversation: \n\nUser: {user_message}\n\nAssistant: {bot_response}"
             title_response = llm_model.generate_content(title_prompt)
             new_title = title_response.text.strip().replace('"', '')
             if new_title:
-                chat.title = new_title
+                chat_repo.rename(chat, new_title)
                 print(f"✅ Updated title to: {new_title}")
         except Exception as api_error:
             print(f"❌ Could not Auto-generate title for chat {chat_id}: {api_error}")
             
-    db.commit()
-    
     # 5. Return response
     message_count = len(chat.messages)
     return {"reply": bot_response, "sources": sources, "message_count": message_count}

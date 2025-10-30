@@ -11,14 +11,17 @@ import re
 import tempfile
 import uuid
 from typing import List
+import re
+import tempfile
+import uuid
+from typing import List
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert
 
 from app.config import settings
 from app.core.global_stores import upload_jobs
 from app.modules.askai.models.document import ProcessingJob, ProcessingStage, ProcessingStatus, UploadJob, DriveFile, DriveFolder
-from app.modules.askai.db.models import Chat as SQLChat
+from app.modules.askai.db.repository import ChatRepository
 from app.modules.askai.services.document_processing_service import process_uploaded_pdf
 
 
@@ -102,7 +105,8 @@ def add_drive_folder_to_chat(db: Session, chat_id: UUID, drive_url: str) -> Driv
         raise ValueError("Invalid Google Drive folder URL provided.")
     folder_id = match.group(1)
 
-    chat = db.get(SQLChat, chat_id)
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
     if not chat:
         raise ValueError("Chat not found")
 
@@ -112,11 +116,8 @@ def add_drive_folder_to_chat(db: Session, chat_id: UUID, drive_url: str) -> Driv
 
     folder_structure = _scan_folder_recursively(service, folder_id)
 
-    # Append the new folder to the existing list
-    new_drive_folders = chat.drive_folders + [folder_structure.model_dump()]
-    chat.drive_folders = new_drive_folders
+    chat_repo.add_drive_folder(chat, folder_structure.model_dump())
     
-    db.commit()
     print(f"✅ Added Drive folder '{folder_id}' to chat '{chat_id}'")
     return folder_structure
 

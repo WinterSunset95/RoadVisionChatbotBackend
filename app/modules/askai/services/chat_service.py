@@ -1,18 +1,17 @@
 from uuid import UUID
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from datetime import datetime
 
 from app.core.services import vector_store
 from app.modules.askai.models.chat import ChatMetadata, Message, CreateNewChatRequest, DocumentMetadata
-from app.modules.askai.db.models import Chat as SQLChat
+from app.modules.askai.db.repository import ChatRepository, DocumentRepository
 from app.modules.askai.services.drive_service import download_files_from_drive
 
 def get_all_chats(db: Session) -> List[ChatMetadata]:
     """Get all chats from PostgreSQL."""
-    chats = db.query(SQLChat).order_by(desc(SQLChat.updated_at)).all()
+    chat_repo = ChatRepository(db)
+    chats = chat_repo.get_all()
     response_chats = []
     for chat in chats:
         pdf_list = [
@@ -37,16 +36,9 @@ def get_all_chats(db: Session) -> List[ChatMetadata]:
 
 def create_new_chat(db: Session, payload: Optional[CreateNewChatRequest], background_tasks: BackgroundTasks) -> ChatMetadata:
     """Create a new chat session in PostgreSQL."""
-    now = datetime.now()
-    chat_count = db.query(SQLChat).count()
-    new_chat = SQLChat(
-        title=f"New Chat {chat_count + 1}",
-        created_at=now,
-        updated_at=now,
-    )
-    db.add(new_chat)
-    db.commit()
-    db.refresh(new_chat)
+    chat_repo = ChatRepository(db)
+    chat_count = chat_repo.count()
+    new_chat = chat_repo.create(title=f"New Chat {chat_count + 1}")
 
     if payload and payload.driveUrl:
         background_tasks.add_task(download_files_from_drive, payload.driveUrl, str(new_chat.id))
@@ -63,7 +55,8 @@ def create_new_chat(db: Session, payload: Optional[CreateNewChatRequest], backgr
 
 def get_chat_messages(db: Session, chat_id: UUID) -> List[Message]:
     """Get all messages for a specific chat from PostgreSQL."""
-    chat = db.get(SQLChat, chat_id)
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
     if not chat:
         return []
     
@@ -71,22 +64,43 @@ def get_chat_messages(db: Session, chat_id: UUID) -> List[Message]:
 
 def delete_chat_by_id(db: Session, chat_id: UUID) -> bool:
     """Delete a chat session and its associated data from PostgreSQL."""
-    chat = db.get(SQLChat, chat_id)
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
     if not chat:
         return False
     
-    db.delete(chat)
-    db.commit()
+    chat_repo.delete(chat)
     vector_store.delete_collection(str(chat_id))
     return True
 
 def rename_chat_by_id(db: Session, chat_id: UUID, new_title: str) -> bool:
     """Rename a chat session in PostgreSQL."""
-    chat = db.get(SQLChat, chat_id)
+    chat_repo = ChatRepository(db)
+    chat = chat_repo.get_by_id(chat_id)
     if not chat:
         return False
     
-    chat.title = new_title
-    chat.updated_at = datetime.now()
-    db.commit()
+    chat_repo.rename(chat, new_title)
     return True
+
+def remove_document_from_chat(db: Session, chat_id: UUID, pdf_name: str) -> Tuple[bool, str]:
+    """Remove a document from a chat and handle cleanup."""
+    chat_repo = ChatRepository(db)
+    doc_repo = DocumentRepository(db)
+
+    chat = chat_repo.get_by_id(chat_id)
+    if not chat:
+        return False, "Chat not found"
+
+    doc_to_delete = doc_repo.find_by_filename_for_chat(chat_id, pdf_name)
+    if not doc_to_delete:
+        return False, f"PDF '{pdf_name}' not found in this chat"
+
+    doc_repo.remove_document_from_chat(chat, doc_to_delete)
+    
+    # After commit, the session is expired, so we need to check the updated state.
+    # A simple way is to check the length of the relationship.
+    if len(chat.documents) == 0:
+        vector_store.delete_collection(str(chat_id))
+    
+    return True, "PDF removed successfully"

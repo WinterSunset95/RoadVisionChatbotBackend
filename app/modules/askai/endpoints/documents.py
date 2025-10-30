@@ -165,27 +165,12 @@ async def stream_chat_docs(
 @router.delete("/chats/{chat_id}/pdfs/{pdf_name}", tags=["Documents"])
 def delete_chat_pdf(chat_id: uuid.UUID, pdf_name: str, db: Session = Depends(get_db_session)):
     """Delete a specific PDF from a chat"""
-    chat = db.get(SQLChat, chat_id)
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-
-    doc_to_delete = db.query(SQLDocument).filter(SQLDocument.filename == pdf_name, SQLDocument.chats.any(id=chat_id)).first()
-    if not doc_to_delete:
-        raise HTTPException(status_code=404, detail=f"PDF '{pdf_name}' not found in this chat")
+    success, message = chat_service.remove_document_from_chat(db, chat_id, pdf_name)
+    if not success:
+        # Use 404 for not found, which covers both chat and document cases
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=message)
     
-    chat.documents.remove(doc_to_delete)
-    db.commit()
-
-    # If this document is not associated with any other chat, delete it entirely.
-    if not doc_to_delete.chats:
-        db.delete(doc_to_delete)
-        db.commit()
-
-    # If this was the last document in the chat, delete the vector collection.
-    if len(chat.documents) == 0:
-        vector_store.delete_collection(str(chat_id))
-        
-    return {"message": "PDF removed successfully", "chat_id": str(chat_id), "pdf_name": pdf_name}
+    return {"message": message, "chat_id": str(chat_id), "pdf_name": pdf_name}
 
 # --- Compatibility Endpoints ---
 
