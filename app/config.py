@@ -82,7 +82,7 @@ class Settings:
 
         # Load security settings
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", self.JWT_SECRET_KEY)
-        self.ALGORITHM = os.getenv("ALGORITHM", self.ALGORITHM)
+        self.ALGORITHM = os.getenv("JWT_ALGORITHM", self.ALGORITHM)
         self.ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", self.ACCESS_TOKEN_EXPIRE_MINUTES))
 
 # Singleton instance
