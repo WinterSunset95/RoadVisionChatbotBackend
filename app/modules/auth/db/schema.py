@@ -4,6 +4,23 @@ from sqlalchemy import (Column, String, UUID, Boolean, DateTime,
                         ForeignKey, Integer, Text, JSON, Enum, Date)
 from app.db.database import Base
 
+class UserRole(str, Enum):
+    """
+    USER role hierarchy for RBAC (Role based account control)
+    - employee: Basic access to universal modules
+    - department_admin: Can manage users and modules within their department, add employees to their department
+    - super_admin: Full access to all modules, can manage all users
+    """
+    EMPLOYEE = "employee"
+    DEPARTMENT_ADMIN = "department_admin"
+    SUPER_ADMIN = "super_admin"
+
+class AccountStatus(str, Enum):
+    ACTIVE = "Active"
+    INACTIVE = "Inactive"
+    LOCKED = "Locked"
+    PENDING = "Pending"
+
 class User(Base):
     __tablename__ = "users"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -24,6 +41,16 @@ class User(Base):
     password_expiry_date = Column(Date, nullable=True)
     role = Column(String(50), nullable=False, default='employee') # 'super_admin', 'dept_admin', 'employee'
     is_active = Column(Boolean, default=True) # Retained for simple active check, complements account_status
+
+class UserRoles(Base):
+    __tablename__ = "user_roles"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'))
+    role = Column(String(50), nullable=False)
+    granted_by = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=True)
+    granted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    valid_until = Column(Date, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class ModuleAccess(Base):
     __tablename__ = "module_access"
