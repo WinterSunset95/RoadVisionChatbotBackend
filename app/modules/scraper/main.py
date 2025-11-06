@@ -17,7 +17,6 @@ import os
 # Local modules
 from app.db.database import SessionLocal
 from app.modules.scraper.db.repository import ScraperRepository
-from app.modules.tenderiq.db.repository import TenderRepository
 from .detail_page_scrape import scrape_tender
 from .process_tender import start_tender_processing
 # from .drive import authenticate_google_drive, download_folders, get_shareable_link, upload_folder_to_drive
@@ -141,7 +140,6 @@ def scrape_link(link: str, source_priority: str = "normal", skip_dedup_check: bo
         db = SessionLocal()
         try:
             scraper_repo = ScraperRepository(db)
-            tender_repo = TenderRepository(db)
             
             # DMS Integration is done first to prepare folders and get the canonical release date
             with ScrapeSection(tracker, "DMS Integration"):
@@ -175,11 +173,6 @@ def scrape_link(link: str, source_priority: str = "normal", skip_dedup_check: bo
                             logger.debug(f"💾 Saving to 'scraped_tenders': {tender_data.tender_name}")
                             scraped_tender_orm = scraper_repo.add_scraped_tender_details(query_orm, tender_data, tender_release_date)
                             logger.debug(f"✅ Saved to 'scraped_tenders'.")
-
-                            # 3. Populate main tenders table
-                            logger.debug(f"💾 Saving to 'tenders': {tender_data.tender_name}")
-                            tender_repo.get_or_create_by_id(scraped_tender_orm)
-                            logger.debug(f"✅ Saved to 'tenders'.")
 
                         except Exception as e:
                             logger.warning(f"⚠️  Failed to scrape or save tender {tender_data.tender_name}: {str(e)}")

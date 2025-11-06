@@ -10,10 +10,6 @@ from app.core.services import vector_store, pdf_processor, weaviate_client, exce
 from app.core.global_stores import upload_jobs
 from app.db.database import SessionLocal
 from app.modules.scraper.db.schema import ScrapedTender
-from app.modules.tenderiq.analyze.db.repository import AnalyzeRepository
-from app.modules.tenderiq.analyze.db.schema import AnalysisStatusEnum
-from app.modules.tenderiq.analyze.models.pydantic_models import OnePagerSchema
-
 
 def start_tender_processing(tender: TenderDetailPage):
     """
