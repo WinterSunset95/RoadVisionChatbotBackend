@@ -170,3 +170,5 @@ class ScrapedTenderFile(Base):
     # Relationship
     tender_id = Column(UUID(as_uuid=True), ForeignKey('scraped_tenders.id'))
     tender = relationship("ScrapedTender", back_populates="files")
+
+class AnalyzedTender(Base):
