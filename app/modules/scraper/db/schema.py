@@ -1,11 +1,12 @@
 import uuid
 from datetime import datetime, date
 
-from sqlalchemy import Column, String, DateTime, Date, ForeignKey, Text, Index, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, Date, ForeignKey, Text, Index, Boolean, Integer
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from app.db.database import Base
+from app.modules.auth.db.schema import User
 
 
 class ScrapedEmailLog(Base):
@@ -172,3 +173,33 @@ class ScrapedTenderFile(Base):
     tender = relationship("ScrapedTender", back_populates="files")
 
 class AnalyzedTender(Base):
+    __tablename__ = 'analyzed_tenders'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # One-to-one relationship to the ScrapedTender being analyzed. This refers to the tender's unique string ID (TDR).
+    tender_id = Column(String, nullable=False, unique=True, index=True)
+    
+    # Foreign key to the user who initiated the analysis (if any)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=True, index=True)
+    user = relationship("User")
+
+    # Optional chat ID if analysis was triggered from a chat context
+    chat_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Analysis status tracking
+    status = Column(String, default="pending", nullable=False) # e.g., pending, analyzing, completed, failed
+    progress = Column(Integer, default=0, nullable=False)
+    status_message = Column(Text, nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    analysis_started_at = Column(DateTime, nullable=True)
+    analysis_completed_at = Column(DateTime, nullable=True)
+    
+    # JSON fields for structured analysis data
+    one_pager_json = Column(JSONB, nullable=True)
+    scope_of_work_json = Column(JSONB, nullable=True)
+    data_sheet_json = Column(JSONB, nullable=True)
