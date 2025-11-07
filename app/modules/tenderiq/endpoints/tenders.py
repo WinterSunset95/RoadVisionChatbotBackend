@@ -12,6 +12,7 @@ from app.modules.tenderiq.models.pydantic_models import (
     Tender,
     FilteredTendersResponse,
     TenderActionRequest,
+    HistoryWishlistResponseSchema #New Part Added
 )
 from app.modules.tenderiq.services import tender_service
 from app.modules.tenderiq.services.tender_filter_service import TenderFilterService
@@ -107,6 +108,68 @@ def get_favorite_tenders(db: Session = Depends(get_db_session)):
     return service.get_favorited_tenders(db)
 
 
+# ==================== NEW: HISTORY-WISHLIST ENDPOINT ====================
+
+@router.get(
+    "/history-wishlist",
+    response_model=HistoryWishlistResponseSchema,
+    tags=["TenderIQ"],
+    summary="Get Tender Wishlist History",
+    description="Retrieve all saved tenders (wishlist) with comprehensive report export URL and progress tracking"
+)
+def get_history_wishlist(db: Session = Depends(get_db_session)) -> HistoryWishlistResponseSchema:
+    """
+    **GET /tenderiq/history-wishlist**
+    
+    Retrieve all saved tenders from the wishlist/history with detailed information.
+    
+    Returns:
+    - `report_file_url`: Direct URL to download comprehensive Excel report with all tender details
+    - `tenders`: Array of all saved tenders with current analysis progress and status
+    
+    **Response Fields:**
+    - `progress`: Progress percentage (0-100) of analysis completion
+    - `analysis_state`: Whether analysis phase is completed
+    - `synopsis_state`: Whether synopsis phase is completed  
+    - `evaluated_state`: Whether evaluation is completed
+    - `results`: Final status (won/rejected/incomplete/pending)
+    
+    **Example Response:**
+    ```json
+    {
+        "report_file_url": "https://api.example.com/api/tenderiq/download/comprehensive-report",
+        "tenders": [
+            {
+                "id": "wish_123",
+                "tender_ref_number": "TEND_2025_001",
+                "title": "Road Construction Project",
+                "authority": "PWD Ministry",
+                "value": 5000000.0,
+                "emd": 250000.0,
+                "due_date": "15 Dec",
+                "category": "Civil Works",
+                "progress": 80,
+                "analysis_state": true,
+                "synopsis_state": true,
+                "evaluated_state": false,
+                "results": "pending"
+            }
+        ]
+    }
+    ```
+    """
+    try:
+        service = TenderActionService(db)
+        return service.get_history_wishlist()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve wishlist history: {str(e)}"
+        )
+
+
 @router.post(
     "/tenders/{tender_id}/actions",
     tags=["TenderIQ"],
@@ -170,22 +233,22 @@ def get_available_dates(db: Session = Depends(get_db_session)):
     **Example Response:**
     ```json
     {
-      "dates": [
-        {
-          "date": "2024-11-03",
-          "date_str": "November 3, 2024",
-          "run_at": "2024-11-03T10:30:00Z",
-          "tender_count": 45,
-          "is_latest": true
-        },
-        {
-          "date": "2024-11-02",
-          "date_str": "November 2, 2024",
-          "run_at": "2024-11-02T09:15:00Z",
-          "tender_count": 38,
-          "is_latest": false
-        }
-      ]
+        "dates": [
+            {
+                "date": "2024-11-03",
+                "date_str": "November 3, 2024",
+                "run_at": "2024-11-03T10:30:00Z",
+                "tender_count": 45,
+                "is_latest": true
+            },
+            {
+                "date": "2024-11-02",
+                "date_str": "November 2, 2024",
+                "run_at": "2024-11-02T09:15:00Z",
+                "tender_count": 38,
+                "is_latest": false
+            }
+        ]
     }
     ```
     """
@@ -278,43 +341,10 @@ def get_filtered_tenders(
 
     **Example Requests:**
     ```
-    GET /tenders                                          # Latest scrape run
-    GET /tenders?date_range=last_5_days                   # Latest from last 5 days
-    GET /tenders?date=2024-11-03&category=Civil           # Specific date + category
-    GET /tenders?include_all_dates=true&location=Mumbai   # All tenders from Mumbai
-    ```
-
-    **Example Response:**
-    ```json
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "run_at": "2024-11-03T10:30:00Z",
-      "date_str": "November 3, 2024",
-      "name": "Daily Tender Scrape",
-      "contact": "contact@example.com",
-      "no_of_new_tenders": "12",
-      "company": "Company Name",
-      "queries": [
-        {
-          "id": "550e8400-e29b-41d4-a716-446655440001",
-          "query_name": "Civil",
-          "number_of_tenders": "12",
-          "tenders": [
-            {
-              "id": "550e8400-e29b-41d4-a716-446655440002",
-              "tender_id_str": "TEN-2024-001",
-              "tender_name": "Construction of Multi-Story Building",
-              "tender_url": "https://...",
-              "city": "Mumbai",
-              "value": "250 Crore",
-              "due_date": "2024-11-15",
-              "summary": "...",
-              "files": [...]
-            }
-          ]
-        }
-      ]
-    }
+    GET /tenders # Latest scrape run
+    GET /tenders?date_range=last_5_days # Latest from last 5 days
+    GET /tenders?date=2024-11-03&category=Civil # Specific date + category
+    GET /tenders?include_all_dates=true&location=Mumbai # All tenders from Mumbai
     ```
     """
     try:
